@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEENAI 契約入力アシスタント v1.4</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --surface: #161b27; --surface2: #1e2438;
+  --border: #2a3050; --accent: #4f8ef7; --accent2: #6ee7b7;
+  --warn: #f59e0b; --danger: #ef4444; --ok: #22c55e;
+  --text: #e2e8f0; --text2: #8892b0; --text3: #3d4a70;
+  --radius: 12px; --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Meiryo', 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+/* Header */
+.header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 54px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header-left { display: flex; align-items: center; gap: 10px; }
+.logo { width: 30px; height: 30px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #fff; }
+.header-title { font-size: 14px; font-weight: 700; }
+.header-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.header-status { display: flex; gap: 8px; align-items: center; }
+.conn-badge { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.conn-badge.offline { background: var(--surface2); color: var(--text3); }
+.conn-badge.connecting { background: rgba(245,158,11,0.15); color: var(--warn); }
+.conn-badge.online { background: rgba(34,197,94,0.15); color: var(--ok); }
+.user-chip { font-size: 11px; color: var(--accent); background: rgba(79,142,247,0.12); padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+
+/* Login Card */
+.login-card { max-width: 480px; margin: 60px auto; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 36px; text-align: center; }
+.login-icon { font-size: 40px; margin-bottom: 12px; }
+.login-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; line-height: 1.5; }
+.login-btn { background: var(--accent); color: #fff; border: none; padding: 14px 32px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.login-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.login-skip { display: block; margin-top: 16px; color: var(--text2); font-size: 12px; cursor: pointer; background: none; border: none; font-family: inherit; }
+.login-skip:hover { color: var(--text); }
+
+/* Loading Overlay */
+.loading-overlay { position: fixed; inset: 0; background: rgba(13,17,23,0.85); z-index: 1000; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+.loading-overlay.show { display: flex; }
+.spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: var(--text2); }
+
+/* Tabs */
+.tabs { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; padding: 0 24px; gap: 2px; overflow-x: auto; }
+.tab { padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; background: none; border-left: none; border-right: none; border-top: none; font-family: inherit; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.main { max-width: 720px; margin: 0 auto; padding: 28px 20px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Progress Bar */
+.progress-bar { display: flex; align-items: center; margin-bottom: 28px; gap: 0; overflow-x: auto; padding-bottom: 4px; }
+.prog-item { display: flex; flex-direction: column; align-items: center; min-width: 48px; }
+.prog-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--text3); transition: all 0.3s; }
+.prog-dot.done { background: var(--ok); border-color: var(--ok); color: #fff; font-size: 12px; }
+.prog-dot.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 0 4px rgba(79,142,247,0.2); }
+.prog-label { font-size: 9px; color: var(--text3); margin-top: 3px; text-align: center; max-width: 46px; line-height: 1.2; }
+.prog-line { flex: 1; height: 2px; background: var(--border); min-width: 10px; max-width: 32px; margin-bottom: 14px; transition: background 0.3s; }
+.prog-line.done { background: var(--ok); }
+
+.wizard-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; animation: fadeIn 0.22s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.step-label { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+.step-question { font-size: 20px; font-weight: 700; line-height: 1.4; margin-bottom: 6px; }
+.step-hint { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+
+.suggest-btn { width: 100%; background: linear-gradient(135deg, rgba(79,142,247,0.12), rgba(110,231,183,0.06)); border: 1.5px solid var(--accent); border-radius: var(--radius); padding: 14px 18px; cursor: pointer; text-align: left; transition: all 0.2s; margin-bottom: 10px; position: relative; overflow: hidden; font-family: inherit; color: var(--text); }
+.suggest-btn:hover { background: linear-gradient(135deg, rgba(79,142,247,0.22), rgba(110,231,183,0.12)); transform: translateY(-1px); }
+.suggest-btn-main { font-size: 16px; font-weight: 700; }
+.suggest-btn-sub { font-size: 12px; color: var(--accent2); margin-top: 3px; }
+.suggest-pct { position: absolute; top: 12px; right: 14px; background: rgba(110,231,183,0.15); color: var(--accent2); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+
+.option-grid { display: grid; gap: 8px; margin-bottom: 12px; }
+.option-grid.col2 { grid-template-columns: 1fr 1fr; }
+.option-grid.col3 { grid-template-columns: 1fr 1fr 1fr; }
+.option-grid.col4 { grid-template-columns: repeat(4,1fr); }
+.opt-btn { background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 11px 12px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text2); transition: all 0.2s; text-align: center; font-family: inherit; }
+.opt-btn:hover { border-color: var(--accent); color: var(--text); }
+.opt-btn.selected { border-color: var(--accent); background: rgba(79,142,247,0.1); color: var(--accent); }
+
+.num-input { background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 15px; font-weight: 600; color: var(--text); width: 130px; text-align: right; transition: border 0.2s; font-family: inherit; }
+.num-input:focus { outline: none; border-color: var(--accent); }
+.num-unit { font-size: 13px; color: var(--text2); font-weight: 600; }
+.num-input-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.quick-nums { display: flex; gap: 6px; flex-wrap: wrap; }
+.quick-num { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 11px; font-size: 12px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.2s; }
+.quick-num:hover { border-color: var(--accent); color: var(--accent); }
+.text-input { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 14px; color: var(--text); transition: border 0.2s; margin-bottom: 8px; font-family: inherit; }
+.text-input:focus { outline: none; border-color: var(--accent); }
+textarea.text-input { resize: vertical; min-height: 70px; }
+
+.search-wrap { position: relative; margin-bottom: 12px; }
+.search-input { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px 10px 36px; font-size: 14px; color: var(--text); transition: border 0.2s; font-family: inherit; }
+.search-input:focus { outline: none; border-color: var(--accent); }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 14px; pointer-events: none; }
+.dropdown { position: absolute; top: calc(100% + 2px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); z-index: 50; max-height: 260px; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4); display: none; }
+.dropdown.open { display: block; }
+.dropdown-item { padding: 9px 14px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--border); }
+.dropdown-item:last-child { border-bottom: none; }
+.dropdown-item:hover { background: var(--surface2); }
+.dropdown-item-main { font-size: 13px; font-weight: 600; }
+.dropdown-item-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.dropdown-new { padding: 10px 14px; cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 700; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+.dropdown-new:hover { background: rgba(79,142,247,0.08); }
+
+.pa-badge { display: inline-block; background: rgba(79,142,247,0.15); color: var(--accent); font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
+.code-badge { display: inline-block; background: rgba(110,231,183,0.15); color: var(--accent2); font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
+.ryakugo-badge { display: inline-block; background: rgba(245,158,11,0.15); color: var(--warn); font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+
+.recent-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.2s; }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+
+.warn-box { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--warn); margin-bottom: 10px; }
+.info-box { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.2); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--accent2); margin-bottom: 10px; }
+.err-box { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--danger); margin-bottom: 10px; }
+
+.nav-row { display: flex; gap: 10px; margin-top: 20px; }
+.btn-back { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 18px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.btn-back:hover { border-color: var(--text2); color: var(--text); }
+.btn-next { flex: 1; background: var(--accent); border: none; border-radius: var(--radius-sm); padding: 12px 20px; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.btn-next:hover { opacity: 0.88; }
+.btn-next:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.detail-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.detail-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; position: relative; }
+.detail-card-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.detail-card-title { font-size: 14px; font-weight: 700; }
+.detail-card-amount { font-size: 14px; font-weight: 700; color: var(--accent2); }
+.detail-card-body { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.detail-card-remark { font-size: 12px; color: var(--warn); margin-top: 4px; }
+.btn-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; padding: 0 4px; transition: color 0.2s; }
+.btn-del:hover { color: var(--danger); }
+
+.preview-table { width: 100%; border-collapse: collapse; margin: 14px 0; }
+.preview-table th, .preview-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+.preview-table th { color: var(--text2); font-weight: 600; width: 34%; }
+.preview-table td { color: var(--text); font-weight: 600; }
+.preview-section-row td, .preview-section-row th { font-size: 10px; font-weight: 700; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; padding-top: 14px; }
+
+.complete-actions { display: grid; gap: 10px; margin-top: 18px; }
+.action-btn { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; transition: all 0.2s; text-align: left; width: 100%; font-family: inherit; color: var(--text); }
+.action-btn:hover { border-color: var(--accent); }
+.action-btn.primary { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+.action-icon { font-size: 20px; width: 32px; text-align: center; }
+.action-text-main { font-size: 14px; font-weight: 700; }
+.action-text-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+.new-form { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+.new-form-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-row.full { grid-template-columns: 1fr; }
+.form-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-bottom: 4px; }
+.form-input { width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; color: var(--text); transition: border 0.2s; font-family: inherit; }
+.form-input:focus { outline: none; border-color: var(--accent); }
+
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.mode-card { background: var(--surface2); border: 2px solid var(--border); border-radius: var(--radius); padding: 20px 16px; cursor: pointer; transition: all 0.2s; text-align: center; }
+.mode-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.mode-card.selected { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+.mode-icon { font-size: 28px; margin-bottom: 8px; }
+.mode-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.mode-desc { font-size: 11px; color: var(--text2); line-height: 1.4; }
+
+.type-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.type-card { background: var(--surface2); border: 2px solid var(--border); border-radius: var(--radius); padding: 22px 16px; cursor: pointer; transition: all 0.2s; text-align: center; }
+.type-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.type-card.selected { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+.type-icon { font-size: 30px; margin-bottom: 8px; }
+.type-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.type-desc { font-size: 11px; color: var(--text2); }
+
+.history-list { display: flex; flex-direction: column; gap: 10px; }
+.history-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.history-no { font-size: 13px; font-weight: 700; color: var(--accent); }
+.history-packer { font-size: 14px; font-weight: 700; margin-top: 2px; }
+.history-detail { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.history-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.status-pending { background: rgba(245,158,11,0.15); color: var(--warn); }
+.status-done { background: rgba(34,197,94,0.15); color: var(--ok); }
+
+.section-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 14px; letter-spacing: 0.5px; }
+.powered { text-align: center; font-size: 11px; color: var(--text3); margin-top: 40px; padding: 20px; }
+
+.selected-box { background: rgba(110,231,183,0.07); border: 1px solid rgba(110,231,183,0.25); border-radius: var(--radius-sm); padding: 11px 14px; margin-bottom: 12px; }
+.selected-box-label { font-size: 11px; color: var(--accent2); font-weight: 700; margin-bottom: 3px; }
+.selected-box-name { font-size: 15px; font-weight: 700; }
+.selected-box-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+.history-mini { background: var(--surface2); border-radius: 8px; padding: 10px 12px; margin-top: 10px; font-size: 11px; }
+.history-mini-label { color: var(--text3); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.history-mini-row { color: var(--text2); padding: 2px 0; }
+.history-mini-row strong { color: var(--text); }
+
+.master-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; margin-bottom: 8px; }
+
+/* Scrollable list for 93 packers */
+.packer-list { max-height: 600px; overflow-y: auto; padding-right: 4px; }
+.packer-list::-webkit-scrollbar { width: 6px; }
+.packer-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">処理中...</div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">LN</div>
+    <div>
+      <div class="header-title">LEENAI 契約入力アシスタント</div>
+      <div class="header-sub">v1.4 (2026-05-26) &nbsp;|&nbsp; SYS-A-01 &nbsp;|&nbsp; Dataverse連携 &nbsp;|&nbsp; Excel契約書生成</div>
+    </div>
+  </div>
+  <div class="header-status">
+    <span class="user-chip" id="userChip" style="display:none;"></span>
+    <span class="conn-badge offline" id="connBadge">● オフライン</span>
+  </div>
+</div>
+
+<!-- Login Card (初期画面) -->
+<div class="login-card" id="loginCard">
+  <div class="login-icon">🔐</div>
+  <div class="login-title">COMPASS Dataverse に接続</div>
+  <div class="login-sub">
+    ログインすると 93社の購買元マスター、過去3,961件の契約履歴、<br>
+    品目別単価統計が自動ロードされます。
+  </div>
+  <button class="login-btn" onclick="startLogin()">🚀 ログイン</button>
+  <button class="login-skip" onclick="useOfflineMode()">データなしで起動 (DEMO)</button>
+</div>
+
+<!-- Tabs -->
+<div class="tabs" id="tabsBar" style="display:none;">
+  <button class="tab active" onclick="showTab('wizard')">📝 契約入力</button>
+  <button class="tab" onclick="showTab('history')">📋 履歴</button>
+  <button class="tab" onclick="showTab('master')">🗂 マスター</button>
+</div>
+
+<!-- 契約入力 -->
+<div id="tab-wizard" class="tab-content active" style="display:none;">
+<div class="main">
+  <div class="progress-bar" id="progressBar"></div>
+  <div id="wizardContainer"></div>
+</div>
+</div>
+
+<!-- 履歴 -->
+<div id="tab-history" class="tab-content" style="display:none;">
+<div class="main">
+  <div class="section-title" id="historyTitle">最近の購買契約 (Dataverse連携時に読み込み)</div>
+  <div class="history-list" id="historyList"></div>
+  <div class="powered">✦ Powered by LEENAI Automation System</div>
+</div>
+</div>
+
+<!-- マスター -->
+<div id="tab-master" class="tab-content" style="display:none;">
+<div class="main">
+  <div class="section-title">購買元マスター <span id="packerCount" style="color:var(--accent);"></span></div>
+  <div class="search-wrap" style="margin-bottom:14px;">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="masterSearch" placeholder="会社名・PA ID・コード・略号で検索..." oninput="filterMasterList()">
+  </div>
+  <div class="packer-list" id="masterList"></div>
+  <div class="powered">✦ Powered by LEENAI Automation System</div>
+</div>
+</div>
+
+<script>
+
+// ══════════════════════════════════════════════════════
+// 設定・定数
+// ══════════════════════════════════════════════════════
+const CLIENT_ID    = 'f071a165-5e9b-44bf-b6a1-baba654524db';
+const TENANT_ID    = 'a56988ff-c2b8-4df8-9727-889ad4205198';
+const DV_URL       = 'https://orgde512c6f.crm7.dynamics.com';
+const DV_API       = `${DV_URL}/api/data/v9.2`;
+const REDIRECT_URI = location.origin + location.pathname;
+const SCOPE        = `${DV_URL}/user_impersonation openid profile`;
+
+const POLS = ['東京','横浜','大阪','神戸','名古屋','博多','仙台','那覇','金沢','石狩','新潟'];
+const AVG_KG_PER_CONTAINER = 23000;
+const DEMO_EXCHANGE = 156.83;  // 2026-04-13 みずほTTB
+
+// 과거 계약번호 → 약자 추출 (클라이언트 사이드 분석)
+function extractRyakugoMap(contracts) {
+  const counter = {};
+  contracts.forEach(c => {
+    const cn = c.cr49f_purchase_contract_no;
+    const pid = c['_cr49f_packer_id_value'];
+    if (!cn || !pid || !cn.startsWith('LR-') || cn.length < 10) return;
+    const r = cn.substring(7, 9).toUpperCase();
+    if (!/^[A-Z]{2}$/.test(r)) return;
+    if (!counter[r]) counter[r] = {};
+    counter[r][pid] = (counter[r][pid] || 0) + 1;
+  });
+  const idToRyakugo = {};
+  Object.keys(counter).forEach(r => {
+    const entries = Object.entries(counter[r]).sort((a,b) => b[1] - a[1]);
+    const [topId, topCount] = entries[0];
+    const total = entries.reduce((s,[,c]) => s+c, 0);
+    if (topCount / total >= 0.95 && !idToRyakugo[topId]) {
+      idToRyakugo[topId] = r;
+    }
+  });
+  return idToRyakugo;
+}
+
+// ══════════════════════════════════════════════════════
+// 状態 (State)
+// ══════════════════════════════════════════════════════
+let DATAVERSE_MODE = false;
+let PACKERS = [];      // [{id(guid), cr49f_id, packer, code, name, address, person, tel, fax, payment, ryakugo}]
+let RECENT_CONTRACTS = [];  // 最近300件
+let CONTRACT_ITEMS = {}; // {contract_id: [items...]}
+let ITEMS_MASTER = [
+  { code:'JOCC', name:'段ボール', doc:'Old Corrugated Containers' },
+  { code:'JONP', name:'新聞', doc:'Old Newspaper' },
+  { code:'JOMG', name:'雑誌', doc:'Magazines' },
+  { code:'JMC', name:'牛乳パック', doc:'' },
+  { code:'JKGB', name:'食袋・雑袋', doc:'' },
+  { code:'JSOP', name:'上白', doc:'' },
+  { code:'JOINP', name:'残紙', doc:'' },
+  { code:'JHMP', name:'ハードミックス', doc:'' },
+  { code:'JBBC', name:'台紙', doc:'' },
+  { code:'SHREDDER', name:'シュレッダー', doc:'' },
+  { code:'PAPER CORE', name:'紙管', doc:'' },
+  { code:'KGB-B', name:'雑袋(ビニール袋付き)', doc:'' },
+];
+
+let S = initState();
+
+function initState() {
+  return {
+    step: 0, mode: null, type: null, reviseNo: '',
+    packer: null, contractDate: today(),
+    paymentTerm: '', exchangeRate: DEMO_EXCHANGE, deadline: '',
+    details: [], currentDetail: null, contractNo: '', reviseDate: today(),
+    accessToken: '', tokenExpiry: 0, userEmail: '', userName: '',
+  };
+}
+
+function today() { const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function endOfMonth() { const d=new Date(); const l=new Date(d.getFullYear(),d.getMonth()+1,0); return l.getFullYear()+'-'+pad(l.getMonth()+1)+'-'+pad(l.getDate()); }
+function pad(n) { return String(n).padStart(2,'0'); }
+function shortName(n) { return (n||'').replace('株式会社','').replace('有限会社','').replace('合同会社','').replace('合資会社','').trim(); }
+
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text || '処理中...';
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+function setConn(status, text) {
+  const b = document.getElementById('connBadge');
+  b.className = 'conn-badge ' + status;
+  b.textContent = text;
+}
+
+// ══════════════════════════════════════════════════════
+// OAuth (PKCE) — PO_TOOL v2.1 패턴
+// ══════════════════════════════════════════════════════
+function b64url(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); }
+async function sha256(str) { return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)); }
+function randomStr(len=64) { const a=new Uint8Array(len); crypto.getRandomValues(a); return b64url(a).slice(0,len); }
+
+async function startLogin() {
+  setConn('connecting', '● 接続中...');
+  const verifier = randomStr(64);
+  const challenge = b64url(await sha256(verifier));
+  const state = 'dv_' + randomStr(16);
+  sessionStorage.setItem('pkce_verifier', verifier);
+  sessionStorage.setItem('pkce_state', state);
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID, response_type: 'code', redirect_uri: REDIRECT_URI,
+    scope: SCOPE, state, code_challenge: challenge, code_challenge_method: 'S256',
+    prompt: 'select_account'
+  });
+  location.href = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize?${params}`;
+}
+
+async function handleCallback() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  if (!code) return false;
+  history.replaceState({}, '', location.pathname);
+
+  showLoading('Dataverse認証中...');
+  try {
+    const verifier = sessionStorage.getItem('pkce_verifier');
+    const res = await fetch(`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        client_id: CLIENT_ID, grant_type: 'authorization_code',
+        code, redirect_uri: REDIRECT_URI, code_verifier: verifier, scope: SCOPE
+      })
+    });
+    const data = await res.json();
+    if (!data.access_token) throw new Error(data.error_description || 'トークン取得失敗');
+    S.accessToken = data.access_token;
+    S.tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+
+    // 사용자 정보
+    try {
+      const me = await fetch('https://graph.microsoft.com/v1.0/me', {
+        headers: {Authorization: `Bearer ${S.accessToken}`}
+      }).then(r => r.json());
+      S.userName = me.displayName || '';
+      S.userEmail = me.mail || me.userPrincipalName || '';
+      document.getElementById('userChip').textContent = S.userName;
+      document.getElementById('userChip').style.display = 'inline-block';
+    } catch(e) {}
+
+    setConn('online', '● Dataverse接続');
+    DATAVERSE_MODE = true;
+    await loadAllData();
+    showMainUI();
+  } catch(e) {
+    hideLoading();
+    setConn('offline', '● オフライン');
+    alert('認証エラー: ' + e.message);
+  }
+  return true;
+}
+
+async function dvGet(path) {
+  if (Date.now() > S.tokenExpiry) throw new Error('セッション切れ。再ログインしてください。');
+  const res = await fetch(`${DV_API}/${path}`, {
+    headers: {
+      'Authorization': `Bearer ${S.accessToken}`,
+      'OData-MaxVersion': '4.0', 'OData-Version': '4.0',
+      'Accept': 'application/json',
+      'Prefer': 'odata.include-annotations="OData.Community.Display.V1.FormattedValue"'
+    }
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(`API ${res.status}: ${e?.error?.message || res.statusText}`);
+  }
+  return res.json();
+}
+
+async function loadAllData() {
+  try {
+    showLoading('Packerマスター読み込み中... (93社)');
+    // 1. Packers - active のみ
+    const packersRes = await dvGet('cr49f_packers?$filter=statecode eq 0' +
+      '&$select=cr49f_packerid,cr49f_id,cr49f_packer,cr49f_packer_code,cr49f_packer_name,' +
+      'cr49f_packer_address,cr49f_packer_person,cr49f_packer_tel,cr49f_parker_fax,cr49f_payment_term' +
+      '&$orderby=cr49f_id asc');
+    PACKERS = (packersRes.value || []).map(p => ({
+      id: p.cr49f_packerid,  // GUID
+      cr49f_id: p.cr49f_id,
+      packer: p.cr49f_packer || '',
+      code: p.cr49f_packer_code || '',
+      name: p.cr49f_packer_name || '',
+      address: p.cr49f_packer_address || '',
+      person: p.cr49f_packer_person || '',
+      tel: p.cr49f_packer_tel || '',
+      fax: p.cr49f_parker_fax || '',
+      payment: p.cr49f_payment_term || '',
+      ryakugo: '', // 나중에 채움
+    }));
+
+    showLoading('過去契約読み込み中... (最近500件)');
+    // 2. Recent contracts
+    const contractsRes = await dvGet('cr49f_purchase_contracts?$top=500' +
+      '&$orderby=cr49f_contract_date desc' +
+      '&$select=cr49f_purchase_contractid,cr49f_purchase_contract_no,cr49f_contract_date,' +
+      '_cr49f_packer_id_value,cr49f_exchange_rate,cr49f_latest_vanning,cr49f_payment_term');
+    RECENT_CONTRACTS = contractsRes.value || [];
+
+    // 3. 약자 매핑 (클라이언트 사이드)
+    // 문제: _cr49f_packer_id_value는 GUID인데 COMPASS_MAPPING 에선 숫자 id를 썼음
+    // 실제로는 cr49f_packer의 cr49f_id (숫자) 필드를 매핑해야 함
+    // GUID → cr49f_id 매핑
+    const guidToNumId = {};
+    PACKERS.forEach(p => { guidToNumId[p.id.toLowerCase()] = p.cr49f_id; });
+
+    // Contract에서 GUID → 약자 추출
+    const ryakuCounter = {};
+    RECENT_CONTRACTS.forEach(c => {
+      const cn = c.cr49f_purchase_contract_no;
+      const guid = (c['_cr49f_packer_id_value'] || '').toLowerCase();
+      if (!cn || !guid || !cn.startsWith('LR-') || cn.length < 10) return;
+      const r = cn.substring(7, 9).toUpperCase();
+      if (!/^[A-Z]{2}$/.test(r)) return;
+      if (!ryakuCounter[r]) ryakuCounter[r] = {};
+      ryakuCounter[r][guid] = (ryakuCounter[r][guid] || 0) + 1;
+    });
+    const guidToRyakugo = {};
+    Object.keys(ryakuCounter).forEach(r => {
+      const entries = Object.entries(ryakuCounter[r]).sort((a,b) => b[1] - a[1]);
+      const [topGuid, topCount] = entries[0];
+      const total = entries.reduce((s,[,c]) => s+c, 0);
+      if (topCount / total >= 0.95 && !guidToRyakugo[topGuid]) {
+        guidToRyakugo[topGuid] = r;
+      }
+    });
+    PACKERS.forEach(p => { p.ryakugo = guidToRyakugo[p.id.toLowerCase()] || ''; });
+
+    showLoading('品目明細読み込み中... (関連品目)');
+    // 4. 最近 contracts の details (품목별 단가)
+    const contractIds = RECENT_CONTRACTS.slice(0, 100).map(c => c.cr49f_purchase_contractid);
+    if (contractIds.length) {
+      // 배치로 분할 (100개는 한번에 가능)
+      const filter = contractIds.map(id => `_cr49f_purchase_contract_id_value eq ${id}`).join(' or ');
+      try {
+        const detailsRes = await dvGet('cr49f_purchase_details?$filter=' + encodeURIComponent(filter) +
+          '&$select=cr49f_count,cr49f_incoterms,cr49f_loading_port,cr49f_price,cr49f_quantity,' +
+          '_cr49f_purchase_contract_id_value,_cr49f_item_id_value' +
+          '&$expand=cr49f_item_id($select=cr49f_item,crcf9_item_japan)');
+        (detailsRes.value || []).forEach(d => {
+          const cid = d['_cr49f_purchase_contract_id_value'];
+          if (!CONTRACT_ITEMS[cid]) CONTRACT_ITEMS[cid] = [];
+          CONTRACT_ITEMS[cid].push({
+            count: d.cr49f_count, inco: d.cr49f_incoterms, pol: d.cr49f_loading_port,
+            price: d.cr49f_price, qty: d.cr49f_quantity,
+            item_code: d.cr49f_item_id?.cr49f_item || '',
+            item_name_jp: d.cr49f_item_id?.crcf9_item_japan || '',
+          });
+        });
+      } catch(e) { console.warn('詳細取得失敗:', e.message); }
+    }
+
+    hideLoading();
+    renderHistory();
+    renderMaster();
+  } catch(e) {
+    hideLoading();
+    alert('データ読み込みエラー: ' + e.message);
+    throw e;
+  }
+}
+
+function useOfflineMode() {
+  DATAVERSE_MODE = false;
+  setConn('offline', '● オフライン');
+  PACKERS = [];
+  showMainUI();
+  alert('オフラインモードで起動しました。\nログインするとデータが読み込まれます。');
+}
+
+function showMainUI() {
+  document.getElementById('loginCard').style.display = 'none';
+  document.getElementById('tabsBar').style.display = 'flex';
+  document.getElementById('tab-wizard').style.display = 'block';
+  renderStep();
+}
+
+// ══════════════════════════════════════════════════════
+// Stats 계산 (Packer × Item 과거 패턴)
+// ══════════════════════════════════════════════════════
+function getPackerStats(packerId) {
+  const myContracts = RECENT_CONTRACTS.filter(c =>
+    (c['_cr49f_packer_id_value'] || '').toLowerCase() === packerId.toLowerCase()
+  );
+  const myItems = [];
+  myContracts.forEach(c => {
+    const dets = CONTRACT_ITEMS[c.cr49f_purchase_contractid] || [];
+    dets.forEach(d => {
+      myItems.push({...d, date: c.cr49f_contract_date, cn: c.cr49f_purchase_contract_no});
+    });
+  });
+  // 集計
+  const polCounter = {};
+  const incoCounter = {};
+  const itemMap = {}; // item_code → history[]
+  myItems.forEach(d => {
+    if (d.pol) polCounter[d.pol] = (polCounter[d.pol] || 0) + 1;
+    if (d.inco) incoCounter[d.inco] = (incoCounter[d.inco] || 0) + 1;
+    if (d.item_code) {
+      if (!itemMap[d.item_code]) itemMap[d.item_code] = [];
+      itemMap[d.item_code].push(d);
+    }
+  });
+  const topPol = Object.entries(polCounter).sort((a,b) => b[1]-a[1])[0];
+  const topInco = Object.entries(incoCounter).sort((a,b) => b[1]-a[1])[0];
+  return {
+    contracts_count: myContracts.length,
+    details_count: myItems.length,
+    top_pol: topPol?.[0] || '',
+    top_pol_pct: topPol ? Math.round(topPol[1] / myItems.length * 100) : 0,
+    top_inco: topInco?.[0] || '港',
+    items: itemMap,
+    recent_contracts: myContracts.slice(0, 5),
+  };
+}
+
+function getItemStats(packerId, itemCode) {
+  const stats = getPackerStats(packerId);
+  const history = stats.items[itemCode] || [];
+  if (!history.length) return null;
+  history.sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  return {
+    last_price: history[0].price,
+    last_pol: history[0].pol,
+    last_inco: history[0].inco,
+    last_count: history[0].count,
+    last_date: history[0].date,
+    price_history: history.slice(0, 3).map(h => h.price),
+    total: history.length,
+  };
+}
+
+
+// ══════════════════════════════════════════════════════
+// Wizard — STEP 定義
+// ══════════════════════════════════════════════════════
+const STEP_LABELS = ['モード','タイプ','変更元','Packer','契約日','支払','為替','期限','品目','数量','単価','条件','品目確認','契約番号','最終確認'];
+
+function getStepLabels() {
+  return S.mode === 'revise' ? STEP_LABELS : STEP_LABELS.filter((_,i) => i !== 2);
+}
+
+function renderProgress() {
+  const labels = getStepLabels();
+  let html = '';
+  labels.forEach((label, i) => {
+    if (i > 0) html += `<div class="prog-line ${i<=S.step?'done':''}"></div>`;
+    const cls = i < S.step ? 'done' : i === S.step ? 'active' : '';
+    html += `<div class="prog-item"><div class="prog-dot ${cls}">${i<S.step?'✓':i+1}</div><div class="prog-label">${label}</div></div>`;
+  });
+  document.getElementById('progressBar').innerHTML = html;
+}
+
+function renderStep() {
+  renderProgress();
+  const el = document.getElementById('wizardContainer');
+  const eff = (S.mode !== 'revise' && S.step >= 2) ? S.step + 1 : S.step;
+  const map = {
+    0: renderStep0_Mode, 1: renderStep1_Type, 2: renderStep2_ReviseNo,
+    3: renderStep3_Packer, 4: renderStep4_Date, 5: renderStep5_Payment,
+    6: renderStep6_Exchange, 7: renderStep7_Deadline, 8: renderStep8_Item,
+    9: renderStep9_Qty, 10: renderStep10_Price, 11: renderStep11_Condition,
+    12: renderStep12_DetailConfirm, 13: renderStep13_ContractNo, 14: renderStep14_Preview,
+  };
+  el.innerHTML = (map[eff] || (() => '完了'))();
+}
+
+function stepNo(eff) { return S.mode === 'revise' ? eff : eff - 1; }
+
+// STEP 0: 新規/変更
+function renderStep0_Mode() {
+  return `<div class="wizard-card">
+    <div class="step-label">STEP 1</div>
+    <div class="step-question">新規ですか？変更ですか？</div>
+    <div class="step-hint">変更の場合は既存の契約を再発行します。</div>
+    ${!DATAVERSE_MODE ? '<div class="warn-box">⚠ オフラインモードです。変更モードは利用できません。</div>' : ''}
+    <div class="mode-cards">
+      <div class="mode-card ${S.mode==='new'?'selected':''}" onclick="S.mode='new';renderStep()">
+        <div class="mode-icon">✨</div><div class="mode-name">新規</div><div class="mode-desc">新しい契約を入力</div>
+      </div>
+      <div class="mode-card ${S.mode==='revise'?'selected':''} ${!DATAVERSE_MODE?'style=opacity:0.4;pointer-events:none;':''}" onclick="${DATAVERSE_MODE?"S.mode='revise';renderStep()":''}">
+        <div class="mode-icon">🔄</div><div class="mode-name">変更 (Revise)</div><div class="mode-desc">既存の契約内容を修正して再発行</div>
+      </div>
+    </div>
+    <div class="nav-row"><button class="btn-next" onclick="nextStep()" ${!S.mode?'disabled':''}>次へ →</button></div>
+  </div>`;
+}
+
+// STEP 1: 타입
+function renderStep1_Type() {
+  return `<div class="wizard-card">
+    <div class="step-label">STEP 2</div>
+    <div class="step-question">どちらの契約ですか？</div>
+    <div class="type-cards">
+      <div class="type-card ${S.type==='購買'?'selected':''}" onclick="S.type='購買';renderStep()">
+        <div class="type-icon">📦</div><div class="type-name">購買契約</div><div class="type-desc">圧縮場・商社から購入<br>LR-YYMMXX#</div>
+      </div>
+      <div class="type-card" style="opacity:0.4;cursor:not-allowed;" title="販売契約は後続対応">
+        <div class="type-icon">🚢</div><div class="type-name">販売契約</div><div class="type-desc">(後続対応)<br>LRS-YYMMXX#</div>
+      </div>
+    </div>
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="nextStep()" ${S.type!=='購買'?'disabled':''}>次へ →</button></div>
+  </div>`;
+}
+
+// STEP 2: Revise 번호
+function renderStep2_ReviseNo() {
+  const recent = RECENT_CONTRACTS.slice(0, 6).map(c => c.cr49f_purchase_contract_no).filter(Boolean);
+  return `<div class="wizard-card">
+    <div class="step-label">STEP 3 · 変更元</div>
+    <div class="step-question">変更する契約番号を入力してください</div>
+    <div class="step-hint">Dataverseから内容を自動読み込みします。</div>
+    <input class="text-input" id="reviseNoInp" placeholder="例: LR-2604KN4" value="${S.reviseNo}"
+      oninput="S.reviseNo=this.value.toUpperCase()" style="font-weight:700;font-size:16px;letter-spacing:1px;">
+    <div class="chip-label" style="margin-top:8px;">最近の契約</div>
+    <div class="recent-chips">
+      ${recent.map(r => `<div class="chip" onclick="S.reviseNo='${r}';document.getElementById('reviseNoInp').value='${r}';">${r}</div>`).join('')}
+    </div>
+    ${S.reviseNo ? `<div class="info-box">📂「${S.reviseNo}」の内容を読み込みます</div>` : ''}
+    <div class="nav-row">
+      <button class="btn-back" onclick="prevStep()">← 戻る</button>
+      <button class="btn-next" onclick="loadRevise()" ${!S.reviseNo?'disabled':''}>読み込む →</button>
+    </div>
+  </div>`;
+}
+
+async function loadRevise() {
+  try {
+    showLoading('既存契約を読み込み中...');
+    // 1. Find contract
+    const cr = await dvGet(`cr49f_purchase_contracts?$filter=cr49f_purchase_contract_no eq '${S.reviseNo}'&$top=1`);
+    if (!cr.value?.length) {
+      hideLoading();
+      alert(`「${S.reviseNo}」が見つかりません`);
+      return;
+    }
+    const contract = cr.value[0];
+    const packerId = contract['_cr49f_packer_id_value'];
+    const packer = PACKERS.find(p => p.id.toLowerCase() === packerId.toLowerCase());
+    if (!packer) { hideLoading(); alert(`Packer不明: ${packerId}`); return; }
+    
+    S.packer = packer;
+    S.paymentTerm = contract.cr49f_payment_term || packer.payment;
+    S.exchangeRate = contract.cr49f_exchange_rate || DEMO_EXCHANGE;
+    S.deadline = (contract.cr49f_latest_vanning || '').split('T')[0] || endOfMonth();
+    
+    // 2. Details
+    const detRes = await dvGet(`cr49f_purchase_details?$filter=_cr49f_purchase_contract_id_value eq ${contract.cr49f_purchase_contractid}&$expand=cr49f_item_id($select=cr49f_item,crcf9_item_japan)`);
+    S.details = (detRes.value || []).map(d => {
+      const itemCode = d.cr49f_item_id?.cr49f_item || '';
+      const itemName = d.cr49f_item_id?.crcf9_item_japan || '';
+      const qty = (d.cr49f_quantity || 0) * 1000;
+      const price = d.cr49f_price || 0;
+      return {
+        item: { code: itemCode, nameJp: itemName },
+        qty, count: d.cr49f_count || 0, price,
+        pol: d.cr49f_loading_port || '', incoterms: d.cr49f_incoterms || '港',
+        remark: '', amount: Math.floor(qty * price)
+      };
+    });
+    S.contractNo = S.reviseNo;
+    S.reviseDate = today();
+    hideLoading();
+    alert(`✅ 「${S.reviseNo}」${S.details.length}件の品目を読み込みました。\n変更箇所を修正してください。`);
+    S.step = 3;
+    renderStep();
+  } catch(e) {
+    hideLoading();
+    alert('読み込みエラー: ' + e.message);
+  }
+}
+
+// STEP 3: Packer
+function renderStep3_Packer() {
+  const recent = PACKERS.filter(p => {
+    return RECENT_CONTRACTS.some(c => (c['_cr49f_packer_id_value']||'').toLowerCase() === p.id.toLowerCase());
+  }).slice(0, 4);
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(3)}</div>
+    <div class="step-question">購買元は？</div>
+    ${!DATAVERSE_MODE ? '<div class="warn-box">⚠ オフラインモードです。Packer情報は手動入力してください。</div>' : ''}
+    ${recent.length ? `<div class="chip-label">最近使用</div>
+      <div class="recent-chips">
+        ${recent.map(p => `<div class="chip" onclick="selectPacker('${p.id}')">${shortName(p.name)}</div>`).join('')}
+      </div>` : ''}
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="packerSearch" placeholder="会社名・PA_ID・コード・略号で検索..."
+        oninput="filterPackers()" onfocus="filterPackers(true)" onblur="setTimeout(closeDropdown,200)"
+        value="${S.packer?.name || ''}">
+      <div class="dropdown" id="packerDropdown"></div>
+    </div>
+    <div id="newPackerForm" style="display:none;">
+      <div class="new-form">
+        <div class="new-form-title">＋ 新規業者登録 (ローカル → 後でCOMPASS手動登録)</div>
+        <div class="form-row full"><div><div class="form-label">会社名 *</div><input class="form-input" id="np_name"></div></div>
+        <div class="form-row">
+          <div><div class="form-label">正式コード *</div><input class="form-input" id="np_code" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()"></div>
+          <div><div class="form-label">2字略号</div><input class="form-input" id="np_ryakugo" maxlength="2" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()"></div>
+        </div>
+        <div class="form-row">
+          <div><div class="form-label">担当者</div><input class="form-input" id="np_person"></div>
+          <div><div class="form-label">TEL</div><input class="form-input" id="np_tel"></div>
+        </div>
+        <div class="form-row full"><div><div class="form-label">住所</div><input class="form-input" id="np_address"></div></div>
+        <div class="form-row">
+          <div><div class="form-label">FAX</div><input class="form-input" id="np_fax"></div>
+          <div><div class="form-label">支払条件</div>
+            <select class="form-input" id="np_payment">
+              <option>末締翌月25日払い</option><option>末締翌月払い</option><option>翌月末払い</option>
+            </select>
+          </div>
+        </div>
+        <div class="nav-row" style="margin-top:10px;">
+          <button class="btn-back" onclick="hideNewPacker()">キャンセル</button>
+          <button class="btn-next" onclick="saveNewPacker()">💾 保存して選択</button>
+        </div>
+      </div>
+    </div>
+    ${S.packer ? renderPackerSelected() : ''}
+    <div class="nav-row">
+      <button class="btn-back" onclick="prevStep()">← 戻る</button>
+      <button class="btn-next" onclick="nextStep()" ${!S.packer?'disabled':''}>次へ →</button>
+    </div>
+  </div>`;
+}
+
+function renderPackerSelected() {
+  const p = S.packer;
+  const stats = getPackerStats(p.id);
+  return `<div class="selected-box">
+    <div class="selected-box-label">✓ 選択済み ${p.isLocal?'<span style="color:var(--warn);">[ローカル登録]</span>':''}</div>
+    <div class="selected-box-name">
+      <span class="pa-badge">PA${p.cr49f_id||'?'}</span>
+      <span class="code-badge">${p.code||'—'}</span>
+      ${p.ryakugo ? `<span class="ryakugo-badge">${p.ryakugo}</span>` : ''}
+      ${p.name}
+    </div>
+    <div class="selected-box-sub">${p.address||''} · ${p.person||''}</div>
+    <div class="selected-box-sub" style="color:var(--text3);">TEL ${p.tel||'—'} / FAX ${p.fax||'—'}</div>
+    ${stats.contracts_count ? `
+      <div class="history-mini">
+        <div class="history-mini-label">📊 過去実績 (直近500件中 ${stats.contracts_count}件)</div>
+        <div class="history-mini-row">主POL: <strong>${stats.top_pol||'—'}</strong> (${stats.top_pol_pct}%) · 主渡し: <strong>${stats.top_inco}</strong></div>
+      </div>` : ''}
+  </div>`;
+}
+
+function packerDropItem(p) {
+  return `<div class="dropdown-item" onclick="selectPacker('${p.id}')">
+    <div class="dropdown-item-main">
+      <span class="pa-badge">PA${p.cr49f_id}</span>
+      <span class="code-badge">${p.code||'—'}</span>
+      ${p.ryakugo ? `<span class="ryakugo-badge">${p.ryakugo}</span>` : ''}
+      ${p.name}
+    </div>
+    <div class="dropdown-item-sub">${p.address||''} / ${p.person||''}</div>
+  </div>`;
+}
+
+function filterPackers(showAll) {
+  const q = (document.getElementById('packerSearch')?.value||'').toLowerCase();
+  const dd = document.getElementById('packerDropdown');
+  if (!dd) return;
+  if (!q && !showAll) { dd.classList.remove('open'); return; }
+  const filtered = PACKERS.filter(p => {
+    if (!q) return true;
+    return (p.name||'').toLowerCase().includes(q) ||
+           ('pa'+p.cr49f_id).toLowerCase().includes(q) ||
+           (p.code||'').toLowerCase().includes(q) ||
+           (p.ryakugo||'').toLowerCase().includes(q) ||
+           (p.packer||'').toLowerCase().includes(q);
+  }).slice(0, 50);
+  dd.innerHTML = filtered.map(packerDropItem).join('') +
+    `<div class="dropdown-new" onclick="showNewPacker()">＋ 新規業者を追加</div>`;
+  dd.classList.add('open');
+}
+
+function closeDropdown() { document.getElementById('packerDropdown')?.classList.remove('open'); }
+function showNewPacker() { closeDropdown(); document.getElementById('newPackerForm').style.display='block'; }
+function hideNewPacker() { document.getElementById('newPackerForm').style.display='none'; }
+
+function saveNewPacker() {
+  const name = document.getElementById('np_name').value.trim();
+  const code = document.getElementById('np_code').value.trim().toUpperCase();
+  if (!name || !code) { alert('会社名と正式コードは必須です。'); return; }
+  const newP = {
+    id: 'LOCAL_' + Date.now(),
+    cr49f_id: 'L' + (PACKERS.filter(p=>p.isLocal).length+1),
+    packer: code, code,
+    ryakugo: document.getElementById('np_ryakugo').value.trim().toUpperCase(),
+    name,
+    address: document.getElementById('np_address').value.trim(),
+    tel: document.getElementById('np_tel').value.trim(),
+    fax: document.getElementById('np_fax').value.trim(),
+    person: document.getElementById('np_person').value.trim(),
+    payment: document.getElementById('np_payment').value,
+    isLocal: true,
+  };
+  PACKERS.push(newP);
+  selectPacker(newP.id);
+  alert(`✅「${name}」をローカル登録しました。\n後でCOMPASSに手動登録してください。`);
+  renderMaster();
+}
+
+function selectPacker(id) {
+  S.packer = PACKERS.find(p => p.id === id);
+  closeDropdown();
+  renderStep();
+}
+
+// STEP 4: 계약일
+function renderStep4_Date() {
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(4)}</div>
+    <div class="step-question">契約日は？</div>
+    <div class="suggest-btn" onclick="S.contractDate='${today()}';renderStep()">
+      <div class="suggest-btn-main">📅 本日 — ${today()}</div>
+      <div class="suggest-btn-sub">このまま進む</div>
+    </div>
+    <input type="date" class="text-input" value="${S.contractDate}" onchange="S.contractDate=this.value" style="width:185px;">
+    ${S.mode==='revise' ? `<div style="margin-top:12px;"><div class="form-label" style="margin-bottom:4px;">Revise日付</div><input type="date" class="text-input" value="${S.reviseDate}" onchange="S.reviseDate=this.value" style="width:185px;"></div>` : ''}
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="nextStep()">次へ →</button></div>
+  </div>`;
+}
+
+// STEP 5: 지급
+function renderStep5_Payment() {
+  const sug = S.packer?.payment || '末締翌月25日払い';
+  if (!S.paymentTerm) S.paymentTerm = sug;
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(5)}</div>
+    <div class="step-question">支払条件は？</div>
+    <div class="suggest-btn" onclick="S.paymentTerm=${JSON.stringify(sug)};renderStep()">
+      <div class="suggest-btn-main">💴 ${sug}</div>
+      <div class="suggest-btn-sub">Dataverseマスター登録済み</div>
+      <span class="suggest-pct">MASTER</span>
+    </div>
+    <div class="option-grid col2">
+      ${['末締翌月払い','末締翌月25日払い','末締翌月15日払い','翌月末払い','都度払い','10日毎締め、10日後支払い','半月毎締め、5日後払い'].map(p =>
+        `<div class="opt-btn ${S.paymentTerm===p?'selected':''}" onclick="S.paymentTerm='${p}';renderStep()">${p}</div>`
+      ).join('')}
+    </div>
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="nextStep()" ${!S.paymentTerm?'disabled':''}>次へ →</button></div>
+  </div>`;
+}
+
+// STEP 6: 환율
+function renderStep6_Exchange() {
+  if (!S.exchangeRate) S.exchangeRate = DEMO_EXCHANGE;
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(6)}</div>
+    <div class="step-question">今月の為替レートは？</div>
+    <div class="suggest-btn" onclick="S.exchangeRate=${DEMO_EXCHANGE};renderStep()">
+      <div class="suggest-btn-main">💱 ¥${DEMO_EXCHANGE} / $</div>
+      <div class="suggest-btn-sub">2026-04-13 みずほ銀行 TTB</div>
+    </div>
+    <div class="num-input-row"><input type="number" class="num-input" value="${S.exchangeRate}" step="0.01" oninput="S.exchangeRate=parseFloat(this.value)||0"><span class="num-unit">¥ / $</span></div>
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="nextStep()">次へ →</button></div>
+  </div>`;
+}
+
+// STEP 7: 기한
+function renderStep7_Deadline() {
+  if (!S.deadline) S.deadline = endOfMonth();
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(7)}</div>
+    <div class="step-question">出荷期限は？</div>
+    <div class="suggest-btn" onclick="S.deadline='${endOfMonth()}';renderStep()">
+      <div class="suggest-btn-main">📅 今月末 — ${endOfMonth()}</div>
+      <div class="suggest-btn-sub">通常は当月末</div>
+    </div>
+    <input type="date" class="text-input" value="${S.deadline}" onchange="S.deadline=this.value" style="width:185px;">
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="startDetail();nextStep()">次へ →</button></div>
+  </div>`;
+}
+
+function startDetail() {
+  if (S.details.length === 0 && !S.currentDetail) S.currentDetail = newDetail();
+}
+function newDetail() {
+  const stats = S.packer ? getPackerStats(S.packer.id) : null;
+  return {
+    item: null, qty: 0, count: 0, price: 0,
+    pol: stats?.top_pol || '', incoterms: stats?.top_inco || '港',
+    remark: '', amount: 0
+  };
+}
+
+// STEP 8: 품목
+function renderStep8_Item() {
+  if (!S.currentDetail) S.currentDetail = newDetail();
+  const stats = S.packer ? getPackerStats(S.packer.id) : null;
+  // 최빈 품목
+  let topItem = null;
+  if (stats?.items) {
+    const entries = Object.entries(stats.items).sort((a,b) => b[1].length - a[1].length);
+    if (entries.length) topItem = ITEMS_MASTER.find(i => i.code === entries[0][0]);
+  }
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(8)} · 品目 ${S.details.length+1}件目</div>
+    <div class="step-question">品目は？</div>
+    ${topItem ? `
+    <div class="suggest-btn" onclick="S.currentDetail.item=ITEMS_MASTER.find(i=>i.code==='${topItem.code}');renderStep()">
+      <div class="suggest-btn-main">📄 ${topItem.code} (${topItem.name})</div>
+      <div class="suggest-btn-sub">最多取引品目</div>
+    </div>` : ''}
+    <div class="option-grid col2" style="margin-bottom:10px;">
+      ${ITEMS_MASTER.map(i => `<div class="opt-btn ${S.currentDetail?.item?.code===i.code?'selected':''}" onclick="S.currentDetail.item={code:'${i.code}',nameJp:'${i.name}'};renderStep()">
+        <div style="font-weight:700;">${i.code}</div><div style="font-size:11px;color:var(--text2);">${i.name}</div>
+      </div>`).join('')}
+    </div>
+    ${S.details.length > 0 ? `<div class="divider"></div><div style="font-size:12px;color:var(--text2);">入力済み: ${S.details.map(d=>d.item.code).join(', ')}</div>` : ''}
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="nextStep()" ${!S.currentDetail?.item?'disabled':''}>次へ →</button></div>
+  </div>`;
+}
+
+// STEP 9: 수량
+function renderStep9_Qty() {
+  const stats = S.packer ? getItemStats(S.packer.id, S.currentDetail.item?.code) : null;
+  const sugCount = stats?.last_count || 5;
+  if (!S.currentDetail.count) S.currentDetail.count = sugCount;
+  if (!S.currentDetail.qty) S.currentDetail.qty = sugCount * AVG_KG_PER_CONTAINER;
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(9)} · 数量</div>
+    <div class="step-question">本数と重量は？</div>
+    <div class="suggest-btn" onclick="S.currentDetail.count=${sugCount};S.currentDetail.qty=${sugCount*AVG_KG_PER_CONTAINER};renderStep()">
+      <div class="suggest-btn-main">📦 ${sugCount} 本 · ${(sugCount*AVG_KG_PER_CONTAINER).toLocaleString()} kg</div>
+      <div class="suggest-btn-sub">1本平均 ${AVG_KG_PER_CONTAINER/1000}MT ${stats ? '· 直近同一品目' : ''}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px;">
+      <div>
+        <div class="form-label" style="margin-bottom:6px;">本数</div>
+        <div class="num-input-row"><input type="number" class="num-input" value="${S.currentDetail.count||''}" oninput="S.currentDetail.count=parseInt(this.value)||0;S.currentDetail.qty=S.currentDetail.count*${AVG_KG_PER_CONTAINER};safeSet('qtyInp',S.currentDetail.qty)"><span class="num-unit">本</span></div>
+        <div class="quick-nums">${[1,2,3,5,8,10,15,20].map(n => `<div class="quick-num" onclick="S.currentDetail.count=${n};S.currentDetail.qty=${n}*${AVG_KG_PER_CONTAINER};renderStep()">${n}</div>`).join('')}</div>
+      </div>
+      <div>
+        <div class="form-label" style="margin-bottom:6px;">数量 (KG)</div>
+        <div class="num-input-row"><input type="number" class="num-input" id="qtyInp" value="${S.currentDetail.qty||''}" oninput="S.currentDetail.qty=parseInt(this.value)||0"><span class="num-unit">KG</span></div>
+      </div>
+    </div>
+    ${S.currentDetail.count && S.currentDetail.qty ? `<div style="font-size:13px;color:var(--accent2);font-weight:700;">→ 1本平均: ${Math.round(S.currentDetail.qty/S.currentDetail.count/100)/10} MT</div>` : ''}
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="nextStep()" ${!S.currentDetail.qty||!S.currentDetail.count?'disabled':''}>次へ →</button></div>
+  </div>`;
+}
+
+// STEP 10: 단가
+function renderStep10_Price() {
+  const stats = S.packer ? getItemStats(S.packer.id, S.currentDetail.item?.code) : null;
+  const sug = stats?.last_price || 0;
+  const hist = stats?.price_history || [];
+  if (!S.currentDetail.price && sug) S.currentDetail.price = sug;
+  const isWarn = S.currentDetail.price && sug && Math.abs(S.currentDetail.price-sug)/sug > 0.2;
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(10)} · 単価</div>
+    <div class="step-question">${S.currentDetail.item?.code || ''} の単価は？</div>
+    ${sug ? `
+    <div class="suggest-btn" onclick="S.currentDetail.price=${sug};renderStep()">
+      <div class="suggest-btn-main">💴 ¥${sug} / KG</div>
+      <div class="suggest-btn-sub">${S.currentDetail.item?.code}の直近単価 ${hist.length ? '· 推移: ' + hist.map(p => `¥${p}`).join(' → ') : ''}</div>
+    </div>` : ''}
+    <div class="num-input-row"><input type="number" class="num-input" value="${S.currentDetail.price||''}" step="0.1" oninput="S.currentDetail.price=parseFloat(this.value)||0;calcAmt()"><span class="num-unit">¥ / KG</span></div>
+    ${isWarn ? `<div class="warn-box">⚠️ 直近単価(¥${sug})より ${Math.abs(((S.currentDetail.price-sug)/sug*100)).toFixed(0)}% ${S.currentDetail.price>sug?'高い':'低い'}単価です。確認しましたか？</div>` : ''}
+    ${S.currentDetail.price && S.currentDetail.qty ? `<div style="background:var(--surface2);border-radius:8px;padding:10px 14px;"><div style="font-size:12px;color:var(--text2);">金額 (税抜)</div><div style="font-size:18px;font-weight:700;color:var(--accent2);" id="amtPrev">¥${Math.floor(S.currentDetail.qty*S.currentDetail.price).toLocaleString()}</div></div>` : ''}
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="nextStep()" ${!S.currentDetail.price?'disabled':''}>次へ →</button></div>
+  </div>`;
+}
+
+function calcAmt() {
+  const el = document.getElementById('amtPrev');
+  if (el && S.currentDetail.qty && S.currentDetail.price)
+    el.textContent = '¥' + Math.floor(S.currentDetail.qty*S.currentDetail.price).toLocaleString();
+}
+
+// STEP 11: 품목별 조건
+function renderStep11_Condition() {
+  const stats = S.packer ? getItemStats(S.packer.id, S.currentDetail.item?.code) : null;
+  const sugPol = S.currentDetail.pol || stats?.last_pol || '';
+  const sugInco = S.currentDetail.incoterms || stats?.last_inco || '港';
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(11)} · 条件 (品目別)</div>
+    <div class="step-question">${S.currentDetail.item?.code} の積み地・条件は？</div>
+    <div class="step-hint">品目ごとに指定できます。</div>
+    ${sugPol ? `<div class="suggest-btn" onclick="S.currentDetail.pol='${sugPol}';S.currentDetail.incoterms='${sugInco}';renderStep()">
+      <div class="suggest-btn-main">🚢 ${sugPol} · ${sugInco}渡し</div>
+      <div class="suggest-btn-sub">同一品目の直近実績</div>
+    </div>` : ''}
+    <div style="font-size:12px;color:var(--text2);margin:8px 0 6px;">積み地 (POL)</div>
+    <div class="option-grid col4">${POLS.map(p => `<div class="opt-btn ${S.currentDetail.pol===p?'selected':''}" onclick="S.currentDetail.pol='${p}';renderStep()">${p}</div>`).join('')}</div>
+    <div style="font-size:12px;color:var(--text2);margin:10px 0 6px;">渡し条件</div>
+    <div class="option-grid col2">
+      <div class="opt-btn ${S.currentDetail.incoterms==='港'?'selected':''}" onclick="S.currentDetail.incoterms='港';renderStep()">港渡し</div>
+      <div class="opt-btn ${S.currentDetail.incoterms==='店頭'?'selected':''}" onclick="S.currentDetail.incoterms='店頭';renderStep()">店頭渡し</div>
+    </div>
+    ${S.currentDetail.pol&&S.currentDetail.incoterms ? `<div style="font-size:13px;color:var(--accent2);font-weight:700;margin-bottom:12px;">→ 契約書表示: ${S.currentDetail.pol} ${S.currentDetail.incoterms}渡し</div>` : ''}
+    <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">備考 (任意 · この品目のみ)</div>
+    <textarea class="text-input" rows="2" placeholder="例: 湿度13%以下、牛乳パックを含む等" oninput="S.currentDetail.remark=this.value">${S.currentDetail.remark||''}</textarea>
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="confirmDetail();nextStep()" ${!S.currentDetail.pol||!S.currentDetail.incoterms?'disabled':''}>次へ →</button></div>
+  </div>`;
+}
+
+function confirmDetail() {
+  S.currentDetail.amount = Math.floor(S.currentDetail.qty * S.currentDetail.price);
+  S.details.push({...S.currentDetail});
+  S.currentDetail = null;
+}
+
+// STEP 12: 품목 확인
+function renderStep12_DetailConfirm() {
+  const subtotal = S.details.reduce((s,d) => s+d.amount, 0);
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(12)} · 品目確認</div>
+    <div class="step-question">品目を確認・追加してください</div>
+    <div class="detail-list">
+      ${S.details.map((d,i) => `<div class="detail-card"><div class="detail-card-head"><div>
+        <div class="detail-card-title">${i+1}. ${d.item.code} <span style="font-size:12px;color:var(--text2);font-weight:400;">(${d.item.nameJp})</span></div>
+        <div class="detail-card-body">${d.qty.toLocaleString()} KG (${d.count}本) · ¥${d.price}/kg · ${d.pol} ${d.incoterms}渡し</div>
+        ${d.remark?`<div class="detail-card-remark">📝 ${d.remark}</div>`:''}
+      </div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><div class="detail-card-amount">¥${d.amount.toLocaleString()}</div><button class="btn-del" onclick="removeDetail(${i})">🗑</button></div></div></div>`).join('')}
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;">
+      <span style="color:var(--text2);font-size:13px;">税抜き合計</span>
+      <span style="font-weight:700;font-size:15px;">¥${subtotal.toLocaleString()}</span>
+    </div>
+    <button class="opt-btn" style="width:100%;border-style:dashed;color:var(--accent);margin-bottom:12px;" onclick="S.currentDetail=newDetail();S.step=${S.step-4};renderStep()">＋ 品目を追加する</button>
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="nextStep()" ${S.details.length===0?'disabled':''}>次へ →</button></div>
+  </div>`;
+}
+
+function removeDetail(i) { S.details.splice(i,1); renderStep(); }
+
+// STEP 13: 계약번호
+function renderStep13_ContractNo() {
+  if (!S.contractNo || S.mode === 'new') S.contractNo = suggestNo();
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(13)} · 契約番号</div>
+    <div class="step-question">契約番号を確認してください</div>
+    <div class="suggest-btn">
+      <div class="suggest-btn-main">📋 ${S.contractNo}</div>
+      <div class="suggest-btn-sub">${S.mode==='revise'?'変更元番号を引き継ぎ':'Dataverse 既存件数 + 1 で自動採番'}</div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin:8px 0 6px;">または手動入力:</div>
+    <input class="text-input" value="${S.contractNo}" style="width:210px;font-weight:700;font-size:16px;letter-spacing:1px;" oninput="S.contractNo=this.value.toUpperCase()">
+    <div class="nav-row"><button class="btn-back" onclick="prevStep()">← 戻る</button><button class="btn-next" onclick="nextStep()">最終確認へ →</button></div>
+  </div>`;
+}
+
+function suggestNo() {
+  const ryakugo = S.packer?.ryakugo || 'XX';
+  const d = new Date();
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = pad(d.getMonth()+1);
+  const prefix = `LR-${yy}${mm}${ryakugo}`;
+  const existing = RECENT_CONTRACTS.filter(c => (c.cr49f_purchase_contract_no||'').startsWith(prefix));
+  const nums = existing.map(c => parseInt((c.cr49f_purchase_contract_no||'').slice(prefix.length)) || 0);
+  const nextN = (nums.length ? Math.max(...nums) : 0) + 1;
+  return `${prefix}${nextN}`;
+}
+
+// STEP 14: 最終確認
+function renderStep14_Preview() {
+  const subtotal = S.details.reduce((s,d) => s+d.amount, 0);
+  const tax = Math.floor(subtotal*0.10);
+  const total = subtotal+tax;
+  const p = S.packer;
+  return `<div class="wizard-card">
+    <div class="step-label">STEP ${stepNo(14)} · 最終確認</div>
+    <div class="step-question">内容を確認してください</div>
+    ${S.mode==='revise' ? `<div class="info-box">🔄 変更再発行 (Revise) · 変更元: ${S.reviseNo}</div>` : ''}
+    <table class="preview-table">
+      <tr class="preview-section-row"><td colspan="2">基本情報</td></tr>
+      <tr><th>契約番号</th><td>${S.contractNo}${S.mode==='revise'?` <span style="color:var(--accent);font-size:11px;">(Revise: ${S.reviseDate})</span>`:''}</td></tr>
+      <tr><th>契約日</th><td>${S.contractDate}</td></tr>
+      <tr><th>種別</th><td>${S.type} · ${S.mode==='revise'?'変更':'新規'}</td></tr>
+      <tr><th>購買元</th><td><span class="pa-badge">PA${p?.cr49f_id}</span> ${p?.name} ${p?.isLocal?'<span style="color:var(--warn);font-size:11px;">[ローカル]</span>':''}</td></tr>
+      <tr><th>住所</th><td style="font-size:12px;">${p?.address||'—'}</td></tr>
+      <tr><th>TEL / FAX</th><td style="font-size:12px;">${p?.tel||'—'} / ${p?.fax||'—'}</td></tr>
+      <tr><th>担当者</th><td style="font-size:12px;">${p?.person||'—'}</td></tr>
+      <tr class="preview-section-row"><td colspan="2">条件</td></tr>
+      <tr><th>支払条件</th><td>${S.paymentTerm}</td></tr>
+      <tr><th>為替1$</th><td>¥${S.exchangeRate}</td></tr>
+      <tr><th>出荷期限</th><td>${S.deadline}</td></tr>
+      <tr class="preview-section-row"><td colspan="2">品目明細</td></tr>
+      ${S.details.map((d,i) => `<tr><th>${i+1}. ${d.item.code}</th><td>${d.qty.toLocaleString()} KG (${d.count}本)<br><span style="font-size:12px;color:var(--text2);">¥${d.price}/kg · ${d.pol} ${d.incoterms}渡し${d.remark?`<br>📝 ${d.remark}`:''}</span><br><strong style="color:var(--accent2);">¥${d.amount.toLocaleString()}</strong></td></tr>`).join('')}
+      <tr><th>税抜き</th><td style="font-size:16px;font-weight:700;">¥${subtotal.toLocaleString()}</td></tr>
+      <tr><th>税込み</th><td style="font-size:16px;font-weight:700;color:var(--accent2);">¥${total.toLocaleString()}</td></tr>
+    </table>
+    <div class="complete-actions">
+      <button class="action-btn primary" onclick="doGenerateExcel()">
+        <div class="action-icon">📄</div>
+        <div><div class="action-text-main">Excel 契約書ダウンロード</div><div class="action-text-sub">売買契約書 .xlsx を生成してダウンロード</div></div>
+      </button>
+      <button class="action-btn" onclick="doSaveJson()">
+        <div class="action-icon">💾</div>
+        <div><div class="action-text-main">JSON保存 (処理待ちフォルダ)</div><div class="action-text-sub">夜間CoworkがCOMPASSに自動登録 · 安全モード</div></div>
+      </button>
+      <button class="action-btn" onclick="doDownload()">
+        <div class="action-icon">📥</div>
+        <div><div class="action-text-main">JSONダウンロード (ブラウザから)</div><div class="action-text-sub">ファイルをPCに保存して手動配布</div></div>
+      </button>
+    </div>
+    <div class="nav-row" style="margin-top:12px;"><button class="btn-back" onclick="prevStep()">← 修正する</button></div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════
+// 保存処理
+// ══════════════════════════════════════════════════════
+function buildContractJson() {
+  const subtotal = S.details.reduce((s,d) => s+d.amount, 0);
+  return {
+    meta: {
+      version: 'v1.3',
+      source: 'LEENAI_CONTRACT_TOOL',
+      created_at: new Date().toISOString(),
+      created_by: S.userName || 'unknown',
+      status: 'pending_compass_registration',
+    },
+    contract: {
+      type: S.type,
+      mode: S.mode,
+      contract_no: S.contractNo,
+      contract_date: S.contractDate,
+      revise_no: S.mode === 'revise' ? S.reviseNo : null,
+      revise_date: S.mode === 'revise' ? S.reviseDate : null,
+      packer: {
+        guid: S.packer?.id,
+        cr49f_id: S.packer?.cr49f_id,
+        code: S.packer?.code,
+        ryakugo: S.packer?.ryakugo,
+        name: S.packer?.name,
+        address: S.packer?.address,
+        tel: S.packer?.tel,
+        fax: S.packer?.fax,
+        person: S.packer?.person,
+        is_local: S.packer?.isLocal || false,
+      },
+      payment_term: S.paymentTerm,
+      exchange_rate: S.exchangeRate,
+      deadline: S.deadline,
+      details: S.details.map(d => ({
+        item_code: d.item.code,
+        item_name_jp: d.item.nameJp,
+        quantity_kg: d.qty,
+        container_count: d.count,
+        unit_price: d.price,
+        pol: d.pol,
+        incoterms: d.incoterms,
+        remark: d.remark,
+        amount: d.amount,
+      })),
+      subtotal, tax: Math.floor(subtotal*0.10), total: Math.floor(subtotal*1.10),
+    }
+  };
+}
+
+function doSaveJson() {
+  const data = buildContractJson();
+  // 実運用では SharePoint にPOST。ここではダウンロード
+  const filename = `${S.contractDate}_${S.type}_${S.contractNo}_${shortName(S.packer?.name||'')}.json`;
+  downloadJson(data, filename);
+  alert(`💾 [DEMO]\n\n保存先 (実運用予定):\nSharePoint LEENAI_CONTRACT_DRAFT/処理待ち/\n  ${filename}\n\n夜間CoworkがCOMPASSに自動登録します。\n\n現在はブラウザから JSONをダウンロードしました。`);
+  resetWizard();
+}
+
+function doDownload() {
+  const data = buildContractJson();
+  const filename = `${S.contractDate}_${S.type}_${S.contractNo}_${shortName(S.packer?.name||'')}.json`;
+  downloadJson(data, filename);
+}
+
+function downloadJson(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════════
+// Excel 契約書生成 (xlsx-js-style)
+// ══════════════════════════════════════════════════════
+function doGenerateExcel() {
+  const XLS = window.XLSXStyle;
+  if (!XLS) { alert('Excel生成ライブラリが読み込まれていません。\nページを再読み込みしてください。'); return; }
+  if (!S.packer) { alert('購買元が選択されていません。'); return; }
+
+  showLoading('Excel 契約書を生成中...');
+  setTimeout(() => {
+    try {
+      const wb = buildContractExcel(XLS);
+      const filename = `${S.contractNo}_${shortName(S.packer?.name||'')}_購買契約書.xlsx`;
+      XLS.writeFile(wb, filename);
+      hideLoading();
+    } catch(e) {
+      hideLoading();
+      alert('Excel生成エラー: ' + e.message);
+      console.error(e);
+    }
+  }, 100);
+}
+
+function buildContractExcel(XLS) {
+  const p = S.packer;
+  const subtotal = S.details.reduce((sum, d) => sum + d.amount, 0);
+  const tax      = Math.floor(subtotal * 0.10);
+  const total    = subtotal + tax;
+
+  // 日付フォーマット YYYY/M/D
+  const fmtDate = str => {
+    if (!str) return '';
+    const m = str.match(/^(\d{4})-0?(\d+)-0?(\d+)/);
+    return m ? `${m[1]}/${m[2]}/${m[3]}` : str;
+  };
+
+  // ── スタイル定義 ──────────────────────────────
+  const bd = (style='thin', rgb='AAAAAA') => ({style, color:{rgb}});
+  const allBorder = (style='thin', rgb='999999') => ({
+    top:bd(style,rgb), bottom:bd(style,rgb),
+    left:bd(style,rgb), right:bd(style,rgb)
+  });
+
+  const ST = {
+    titleBar: {
+      font:{bold:true, sz:16, color:{rgb:'FFFFFF'}},
+      fill:{patternType:'solid', fgColor:{rgb:'111111'}},
+      alignment:{horizontal:'center', vertical:'center'}
+    },
+    companyHeader: {
+      font:{bold:true, sz:10},
+      alignment:{horizontal:'right', vertical:'center'}
+    },
+    dateLabel: {
+      font:{sz:9},
+      alignment:{horizontal:'right', vertical:'center'}
+    },
+    dateValue: {
+      font:{bold:true, sz:9},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    partyLabel: {
+      font:{bold:true, sz:10},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    partyBody: {
+      font:{sz:9},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    clauseText: {
+      font:{sz:9},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    tblHdr: {
+      font:{bold:true, sz:9},
+      fill:{patternType:'solid', fgColor:{rgb:'DDDDDD'}},
+      border: allBorder('medium','666666'),
+      alignment:{horizontal:'center', vertical:'center', wrapText:true}
+    },
+    tblCell: {
+      font:{sz:9},
+      border: allBorder(),
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    tblCellC: {
+      font:{sz:9},
+      border: allBorder(),
+      alignment:{horizontal:'center', vertical:'center'}
+    },
+    tblCellR: {
+      font:{sz:9},
+      border: allBorder(),
+      alignment:{horizontal:'right', vertical:'center'}
+    },
+    tblCellNum: {
+      font:{sz:9},
+      border: allBorder(),
+      alignment:{horizontal:'right', vertical:'center'},
+      numFmt:'#,##0'
+    },
+    sumLabel: {
+      font:{bold:true, sz:9},
+      fill:{patternType:'solid', fgColor:{rgb:'F0F0F0'}},
+      border: allBorder('medium','666666'),
+      alignment:{horizontal:'right', vertical:'center'}
+    },
+    sumNum: {
+      font:{bold:true, sz:9},
+      fill:{patternType:'solid', fgColor:{rgb:'F0F0F0'}},
+      border: allBorder('medium','666666'),
+      alignment:{horizontal:'right', vertical:'center'},
+      numFmt:'#,##0'
+    },
+    condLabel: {
+      font:{bold:true, sz:9},
+      alignment:{horizontal:'left', vertical:'top'}
+    },
+    condVal: {
+      font:{sz:9},
+      alignment:{horizontal:'left', vertical:'top', wrapText:true}
+    },
+    noteText: {
+      font:{sz:8},
+      alignment:{horizontal:'left', vertical:'top', wrapText:true}
+    },
+    signName: {
+      font:{bold:true, sz:10},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    signSub: {
+      font:{sz:9},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    stampPlaceholder: {
+      font:{sz:8, color:{rgb:'AAAAAA'}},
+      border: allBorder('thin','CCCCCC'),
+      alignment:{horizontal:'center', vertical:'center'}
+    },
+    footer: {
+      font:{italic:true, sz:8, color:{rgb:'AAAAAA'}},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    empty: { font:{sz:9} }
+  };
+
+  // ── ワークシート構築 ──────────────────────────
+  const ws  = {};
+  const merges = [];
+  const rows  = []; // row heights [{hpt}]
+  let R = 0;
+
+  // セルセット
+  function C(col, row, val, style) {
+    const addr = XLS.utils.encode_cell({c:col, r:row});
+    const t = (typeof val === 'number') ? 'n' : 's';
+    ws[addr] = { v: val === null || val === undefined ? '' : val, t, s: style || ST.empty };
+  }
+  // マージ登録
+  function M(cs, rs, ce, re) { merges.push({s:{c:cs,r:rs}, e:{c:ce,r:re}}); }
+  // 行高さ設定
+  function H(r, hpt) { rows[r] = {hpt}; }
+
+  // 列構成: A=0 B=1 C=2 D=3 E=4 F=5 G=6
+  // A: No./ラベル(8), B: 品名コード(12), C: 品名日本語(12),
+  // D: 数量(14), E: 単価(10), F: 条件(14), G: 金額(13)
+
+  // ── ROW 0: 会社名(右側) ──
+  H(R, 20);
+  C(4, R, '株式会社リニア', ST.companyHeader); M(4,R,6,R);
+  R++;
+
+  // ── ROW 1: 空白 ──
+  H(R, 6); R++;
+
+  // ── ROW 2: タイトルバー ──
+  H(R, 30);
+  C(0, R, '売 買 契 約 書', ST.titleBar); M(0,R,6,R);
+  R++;
+
+  // ── ROW 3: 空白 ──
+  H(R, 8); R++;
+
+  // ── ROW 4-6: 日付・契約番号・Revise ──
+  H(R, 16);
+  C(4, R, '日　付：', ST.dateLabel);
+  C(5, R, fmtDate(S.contractDate), ST.dateValue); M(5,R,6,R);
+  R++;
+  H(R, 16);
+  C(4, R, '契約番号：', ST.dateLabel);
+  C(5, R, S.contractNo, ST.dateValue); M(5,R,6,R);
+  R++;
+  H(R, 16);
+  C(4, R, 'Revise 日付：', ST.dateLabel);
+  C(5, R, S.mode === 'revise' ? fmtDate(S.reviseDate) : '', ST.dateValue); M(5,R,6,R);
+  R++;
+
+  // ── ROW 7: 空白 ──
+  H(R, 10); R++;
+
+  // ── ROW 8-10: 甲(売主) ──
+  H(R, 18);
+  C(0, R, '甲　(売主)　' + (p.name||''), ST.partyLabel); M(0,R,6,R);
+  R++;
+  H(R, 15);
+  C(1, R, p.address||'', ST.partyBody); M(1,R,6,R);
+  R++;
+  H(R, 15);
+  C(1, R, `TEL :${p.tel||'　'}　FAX :${p.fax||'　'}`, ST.partyBody); M(1,R,6,R);
+  R++;
+
+  // ── ROW 11: 空白 ──
+  H(R, 8); R++;
+
+  // ── ROW 12-14: 乙(買主) ──
+  H(R, 18);
+  C(0, R, '乙　(買主)　株式会社リニア', ST.partyLabel); M(0,R,6,R);
+  R++;
+  H(R, 15);
+  C(1, R, '〒101-0064　東京都千代田区神田猿楽町2-8-11, VORT水道橋Ⅲ 5階', ST.partyBody); M(1,R,6,R);
+  R++;
+  H(R, 15);
+  C(1, R, 'TEL: 03-3528-9850　FAX: 03-3528-9851', ST.partyBody); M(1,R,6,R);
+  R++;
+
+  // ── ROW 15: 空白 ──
+  H(R, 8); R++;
+
+  // ── ROW 16: 文言 ──
+  H(R, 15);
+  C(0, R, '甲乙は次の通り売買契約を締結する。', ST.clauseText); M(0,R,6,R);
+  R++;
+
+  // ── ROW 17: 空白 ──
+  H(R, 6); R++;
+
+  // ── ROW 18: テーブルヘッダー ──
+  H(R, 22);
+  C(0, R, 'No.',    ST.tblHdr);
+  C(1, R, '品名',   ST.tblHdr); M(1,R,2,R);
+  C(3, R, '数量(KG)', ST.tblHdr);
+  C(4, R, '単価(税抜)', ST.tblHdr);
+  C(5, R, '条件',   ST.tblHdr);
+  C(6, R, '金額(JPY)', ST.tblHdr);
+  R++;
+
+  // ── ROW 19-24: 品目明細 (6行固定) ──
+  let totalQty = 0;
+  for (let i = 0; i < 6; i++) {
+    H(R, 18);
+    const d = S.details[i] || null;
+    C(0, R, i + 1, ST.tblCellC);
+    C(1, R, d ? d.item.code  : '', ST.tblCell);
+    C(2, R, d ? `(${d.item.nameJp})` : '', ST.tblCell);
+    C(3, R, d ? `${d.qty.toLocaleString()} (${d.count} 本)` : '', ST.tblCellR);
+    C(4, R, d ? d.price : '', d ? ST.tblCellR : ST.tblCell);
+    C(5, R, d ? `${d.pol} ${d.incoterms}渡し` : '', ST.tblCell);
+    if (d) {
+      const a = XLS.utils.encode_cell({c:6, r:R});
+      ws[a] = {v: d.amount, t:'n', s: ST.tblCellNum};
+      totalQty += d.qty;
+    } else {
+      C(6, R, '', ST.tblCell);
+    }
+    R++;
+  }
+
+  // ── ROW 25: 合計 / 税抜き ──
+  H(R, 18);
+  C(0, R, '合計', ST.sumLabel); M(0,R,2,R);
+  C(3, R, `${totalQty.toLocaleString()} KG`, ST.sumLabel);
+  C(4, R, '', ST.tblCell);
+  C(5, R, '税抜き', ST.sumLabel);
+  const stAddr = XLS.utils.encode_cell({c:6, r:R});
+  ws[stAddr] = {v: subtotal, t:'n', s: ST.sumNum};
+  R++;
+
+  // ── ROW 26: 税込み ──
+  H(R, 18);
+  C(0, R, '', ST.tblCell); M(0,R,4,R);
+  C(5, R, '税込み', ST.sumLabel);
+  const ttAddr = XLS.utils.encode_cell({c:6, r:R});
+  ws[ttAddr] = {v: total, t:'n', s: ST.sumNum};
+  R++;
+
+  // ── ROW 27: 空白 ──
+  H(R, 10); R++;
+
+  // ── ROW 28-32: 下段 2列 ──
+  const leftRows = [
+    ['納入条件：', '湿度12%以下、禁忌品の紙５%以下、禁忌品の紙以外のものは１%以下'],
+    ['梱　　　包：', '輸出用ベール(BALES)'],
+    ['出荷期限：', fmtDate(S.deadline)],
+    ['支払条件：', S.paymentTerm],
+    ['向け先　：', 'インドネシア、韓国、ベトナム、マレーシア、タイ向け'],
+  ];
+  const rightRows = [
+    '＊ 韓国向けの場合',
+    '　－ 韓国向けの放射能写真対応お願いします。',
+    '',
+    '＊ 写真お送り先（メールアドレス変更）',
+    '　－ photo_rcp@leenearcorp.com',
+  ];
+
+  leftRows.forEach(([lbl, val], i) => {
+    H(R, 16);
+    C(0, R, lbl, ST.condLabel);
+    C(1, R, val, ST.condVal); M(1,R,3,R);
+    C(4, R, rightRows[i]||'', ST.noteText); M(4,R,6,R);
+    R++;
+  });
+
+  // ── ROW: 空白 ──
+  H(R, 10); R++;
+
+  // ── 備考 ──
+  H(R, 15);
+  C(0, R, '＜備考＞', ST.condLabel); M(0,R,6,R);
+  R++;
+
+  const bikoLines = [
+    '１．分納可能',
+    '２．契約量の±10%は、変動可能',
+    '３．インドネシア向けの場合、全量コテクナ検査が必要です。',
+    '４．コンテナの平均重量を次のように合わせてくださるようお願いいたします。　　＊全ての品種：25,000kgまで',
+    '５．当社は反社会的勢力とは一切関わりがないことを保証します。',
+    '６．各向け地別、必要書類は異なります。',
+  ];
+  bikoLines.forEach(line => {
+    H(R, 14);
+    C(0, R, line, ST.noteText); M(0,R,6,R);
+    R++;
+  });
+
+  // ── 空白 ──
+  H(R, 14); R++;
+
+  // ── 署名欄 ──
+  H(R, 16);
+  C(0, R, '株式会社リニア', ST.signName); M(0,R,2,R);
+  C(4, R, p.name||'', ST.signName); M(4,R,6,R);
+  R++;
+  H(R, 15);
+  C(0, R, '代表取締役　李明鎬', ST.signSub); M(0,R,2,R);
+  R++;
+
+  // 署名スペース (3行)
+  for (let i = 0; i < 3; i++) {
+    H(R, 20);
+    if (i === 1) {
+      C(0, R, '[ロゴ・印]', ST.stampPlaceholder); M(0,R,1,R);
+      C(5, R, '[印]', ST.stampPlaceholder); M(5,R,6,R);
+    } else {
+      C(0, R, '', ST.empty); M(0,R,1,R);
+      C(5, R, '', ST.empty); M(5,R,6,R);
+    }
+    R++;
+  }
+
+  // ── フッター ──
+  H(R, 14); R++;
+  H(R, 14);
+  C(0, R, '✦ Powered by LEENAI Automation System', ST.footer); M(0,R,6,R);
+  R++;
+
+  // ── 範囲・マージ・列幅・行高さ ──
+  ws['!ref']    = XLS.utils.encode_range({s:{c:0,r:0}, e:{c:6,r:R}});
+  ws['!merges'] = merges;
+  ws['!cols']   = [
+    {wch: 8},   // A: No./ラベル
+    {wch:12},   // B: 品名コード
+    {wch:12},   // C: 品名日本語
+    {wch:15},   // D: 数量
+    {wch:10},   // E: 単価
+    {wch:14},   // F: 条件
+    {wch:13},   // G: 金額
+  ];
+  ws['!rows'] = rows;
+
+  const wb = XLS.utils.book_new();
+  XLS.utils.book_append_sheet(wb, ws, '購買契約書');
+  return wb;
+}
+
+function resetWizard() {
+  const preserved = { accessToken: S.accessToken, tokenExpiry: S.tokenExpiry, userName: S.userName, userEmail: S.userEmail };
+  S = initState();
+  Object.assign(S, preserved);
+  renderStep();
+  window.scrollTo(0,0);
+}
+
+function nextStep() { S.step++; renderStep(); window.scrollTo(0,0); }
+function prevStep() { if(S.step>0){S.step--;renderStep();window.scrollTo(0,0);} }
+function safeSet(id, val) { const el=document.getElementById(id); if(el) el.value=val; }
+
+// ══════════════════════════════════════════════════════
+// Tabs
+// ══════════════════════════════════════════════════════
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['wizard','history','master'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+  document.getElementById('tab-'+name).style.display = 'block';
+}
+
+// 履歴
+function renderHistory() {
+  const el = document.getElementById('historyList');
+  if (!el) return;
+  const title = document.getElementById('historyTitle');
+  if (!RECENT_CONTRACTS.length) {
+    title.textContent = 'データなし (オフラインモード)';
+    el.innerHTML = '';
+    return;
+  }
+  title.textContent = `最近の購買契約 (${RECENT_CONTRACTS.length}件)`;
+  el.innerHTML = RECENT_CONTRACTS.slice(0, 30).map(c => {
+    const p = PACKERS.find(pp => pp.id.toLowerCase() === (c['_cr49f_packer_id_value']||'').toLowerCase());
+    const dets = CONTRACT_ITEMS[c.cr49f_purchase_contractid] || [];
+    const detSummary = dets.slice(0,3).map(d => `${d.item_code||'?'} ${d.qty||0}MT(${d.count||0}本)`).join(' / ');
+    return `<div class="history-item">
+      <div style="flex:1;">
+        <div class="history-no">${c.cr49f_purchase_contract_no}</div>
+        <div class="history-packer">${p ? `<span class="pa-badge">PA${p.cr49f_id}</span>${p.ryakugo?`<span class="ryakugo-badge">${p.ryakugo}</span>`:''}${p.name}` : '(不明)'}</div>
+        <div class="history-detail">${(c.cr49f_contract_date||'').split('T')[0]} · ${detSummary || '明細取得中...'}</div>
+      </div>
+      <span class="history-status status-done">COMPASS登録済み</span>
+    </div>`;
+  }).join('');
+}
+
+// マスター
+function renderMaster() {
+  document.getElementById('packerCount').textContent = `(${PACKERS.length}社)`;
+  filterMasterList();
+}
+
+function filterMasterList() {
+  const q = (document.getElementById('masterSearch')?.value||'').toLowerCase();
+  const el = document.getElementById('masterList');
+  if (!el) return;
+  const filtered = PACKERS.filter(p => {
+    if (!q) return true;
+    return (p.name||'').toLowerCase().includes(q) ||
+           ('pa'+p.cr49f_id).toLowerCase().includes(q) ||
+           (p.code||'').toLowerCase().includes(q) ||
+           (p.ryakugo||'').toLowerCase().includes(q);
+  });
+  el.innerHTML = filtered.map(p => {
+    const stats = getPackerStats(p.id);
+    return `<div class="master-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">
+            <span class="pa-badge">PA${p.cr49f_id}</span>
+            <span class="code-badge">${p.code||'—'}</span>
+            ${p.ryakugo ? `<span class="ryakugo-badge">${p.ryakugo}</span>` : ''}
+            ${p.name}
+            ${p.isLocal?'<span style="font-size:10px;color:var(--warn);font-weight:700;margin-left:6px;">[ローカル]</span>':''}
+          </div>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;">${p.address||'—'}</div>
+          <div style="font-size:11px;color:var(--text2);">${p.tel||''} · ${p.person||''}</div>
+        </div>
+      </div>
+      ${stats.contracts_count ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--accent2);display:flex;gap:10px;flex-wrap:wrap;">
+        <span>過去 ${stats.contracts_count}件</span>
+        <span>主POL: ${stats.top_pol||'—'} (${stats.top_pol_pct}%)</span>
+        <span>主渡し: ${stats.top_inco||'—'}</span>
+      </div>` : ''}
+    </div>`;
+  }).join('') || '<div style="color:var(--text3);text-align:center;padding:20px;">該当なし</div>';
+}
+
+// ══════════════════════════════════════════════════════
+// 초기화
+// ══════════════════════════════════════════════════════
+(async function init() {
+  // OAuth 콜백이면 토큰 교환
+  if (location.search.includes('code=')) {
+    await handleCallback();
+    return;
+  }
+  // 첫 로드: 로그인 카드 표시
+})();
+
+
+</script>
+</body>
+</html>
