@@ -3,15 +3,83 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LEENAI 契約入力アシスタント v1.4</title>
+<title>LEENAI 契約入力アシスタント v1.5</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
 :root {
-  --bg: #0d1117; --surface: #161b27; --surface2: #1e2438;
-  --border: #2a3050; --accent: #4f8ef7; --accent2: #6ee7b7;
-  --warn: #f59e0b; --danger: #ef4444; --ok: #22c55e;
-  --text: #e2e8f0; --text2: #8892b0; --text3: #3d4a70;
-  --radius: 12px; --radius-sm: 8px;
+  /* ── DARK 테마 기본값 (v1.8 표준) ── */
+  --bg:       #0f1117;
+  --surface:  #1a1d27;
+  --surface2: #22263a;
+  --surface3: #2a2f46;
+  --border:   #2e3350;
+  --text:     #e2e8f0;
+  --text2:    #8892a4;
+  --text3:    #4a5568;
+  /* ── 강조·의미 색상 (DARK 기본값 — 라이트 계열은 각 테마에서 반드시 오버라이드) ── */
+  --accent:   #4f8ef7;
+  --accent2:  #6ee7b7;
+  --ok:       #22c55e;
+  --warn:     #f59e0b;
+  --danger:   #ef4444;
+  --info:     #38bdf8;
+  /* ── 형상 토큰 ── */
+  --radius:    10px;
+  --radius-sm: 8px;
+}
+
+/* ── LIGHT 테마 — MS Fluent 스타일 ── */
+[data-theme="light"] {
+  --bg:       #FAF9F8;
+  --surface:  #FFFFFF;
+  --surface2: #F3F2F1;
+  --surface3: #EDEBE9;
+  --border:   #E1DFDD;
+  --text:     #201F1E;
+  --text2:    #3B3A39;
+  --text3:    #706E6C;
+  --accent:   #0F6CBD;
+  --accent2:  #A19F9D;
+  --ok:       #16a34a;
+  --warn:     #d97706;
+  --danger:   #dc2626;
+  --info:     #0284c7;
+}
+
+/* ── LEENAI 테마 — Calm 세이지 그린 ── */
+[data-theme="leenai"] {
+  --bg:       #DCEBD8;
+  --surface:  #F0F5EF;
+  --surface2: #D4E8D0;
+  --surface3: #C5DCC0;
+  --border:   #A8C8A3;
+  --text:     #1F2A22;
+  --text2:    #2E4032;
+  --text3:    #4E6055;
+  --accent:   #2F6B45;
+  --accent2:  #3F6FA8;
+  --ok:       #16a34a;
+  --warn:     #d97706;
+  --danger:   #dc2626;
+  --info:     #0284c7;
+}
+
+/* ── FOCUS 테마 — 청회색 집중 모드 ── */
+[data-theme="focus"] {
+  --bg:       #D8DDE8;
+  --surface:  #EDF0F5;
+  --surface2: #CDD4E0;
+  --surface3: #BEC8D6;
+  --border:   #9DAABE;
+  --text:     #202733;
+  --text2:    #2E3A4A;
+  --text3:    #4E5D6E;
+  --accent:   #315F9E;
+  --accent2:  #2F7D6A;
+  --ok:       #16a34a;
+  --warn:     #d97706;
+  --danger:   #dc2626;
+  --info:     #0284c7;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Meiryo', 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
@@ -225,12 +293,19 @@ textarea.text-input { resize: vertical; min-height: 70px; }
     <div class="logo">LN</div>
     <div>
       <div class="header-title">LEENAI 契約入力アシスタント</div>
-      <div class="header-sub">v1.4 (2026-05-26) &nbsp;|&nbsp; SYS-A-01 &nbsp;|&nbsp; Dataverse連携 &nbsp;|&nbsp; Excel契約書生成</div>
+      <div class="header-sub">v1.5 (2026-08-18) &nbsp;|&nbsp; SYS-A-01 &nbsp;|&nbsp; Dataverse連携 &nbsp;|&nbsp; Excel契約書生成</div>
     </div>
   </div>
   <div class="header-status">
     <span class="user-chip" id="userChip" style="display:none;"></span>
     <span class="conn-badge offline" id="connBadge">● オフライン</span>
+    <button id="themeToggleBtn" onclick="toggleTheme()"
+      style="margin-left:6px;background:var(--surface2);border:1px solid var(--border);
+             border-radius:20px;padding:4px 12px;cursor:pointer;font-size:12px;
+             color:var(--text);display:flex;align-items:center;gap:5px;
+             transition:all .2s;white-space:nowrap;font-family:inherit;">
+      🌙 ダーク
+    </button>
   </div>
 </div>
 
@@ -284,6 +359,38 @@ textarea.text-input { resize: vertical; min-height: 70px; }
 </div>
 
 <script>
+
+// ══════════════════════════════════════════════════════
+// テーマ管理 (v1.8 標準 — 4段階循環)
+// ══════════════════════════════════════════════════════
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'dark';
+  const order = ['dark', 'light', 'leenai', 'focus'];
+  const next = order[(order.indexOf(current) + 1) % order.length];
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('leenai_theme', next);
+  updateThemeBtn(next);
+}
+
+function updateThemeBtn(theme) {
+  const btn = document.getElementById('themeToggleBtn');
+  if (!btn) return;
+  const labels = {
+    dark:   '🌙 ダーク',
+    light:  '☀️ ライト',
+    leenai: '🌿 LEENAI',
+    focus:  '🎯 FOCUS'
+  };
+  btn.textContent = labels[theme] || '🌙 ダーク';
+}
+
+// 페이지 로드 시 이전 테마 자동 복원
+(function() {
+  const saved = localStorage.getItem('leenai_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.addEventListener('DOMContentLoaded', () => updateThemeBtn(saved));
+})();
 
 // ══════════════════════════════════════════════════════
 // 設定・定数
