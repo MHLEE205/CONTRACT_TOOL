@@ -1,242 +1,412 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link id="leenaiFavicon" rel="icon">
+<title>LEENAI 契約入力アシスタント v1.5</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-<link rel="stylesheet" href="https://mhlee205.github.io/LEENAI_COMMON/v1/leenai-common.css">
-<script src="https://mhlee205.github.io/LEENAI_COMMON/v1/leenai-common.js"></script>
-<script>if(!window.LEENAI){document.addEventListener('DOMContentLoaded',function(){document.body.innerHTML='<div style="padding:40px;font-family:sans-serif">共通ファイルの読み込みに失敗しました。ページを再読み込みしてください。</div>';});}</script>
 <style>
-/* ── A-01 固有 CSS ── */
-:root{
-  --radius:10px;
-  --radius-sm:8px;
+:root {
+  /* ── DARK 테마 기본값 (v1.8 표준) ── */
+  --bg:       #0f1117;
+  --surface:  #1a1d27;
+  --surface2: #22263a;
+  --surface3: #2a2f46;
+  --border:   #2e3350;
+  --text:     #e2e8f0;
+  --text2:    #8892a4;
+  --text3:    #4a5568;
+  /* ── 강조·의미 색상 (DARK 기본값 — 라이트 계열은 각 테마에서 반드시 오버라이드) ── */
+  --accent:   #4f8ef7;
+  --accent2:  #6ee7b7;
+  --ok:       #22c55e;
+  --warn:     #f59e0b;
+  --danger:   #ef4444;
+  --info:     #38bdf8;
+  /* ── 형상 토큰 ── */
+  --radius:    10px;
+  --radius-sm: 8px;
 }
-button{cursor:pointer;font-family:inherit;}
-input,select,textarea{font-family:inherit;}
-body{min-height:100vh;font-size:14px;}
+
+/* ── LIGHT 테마 — MS Fluent 스타일 ── */
+[data-theme="light"] {
+  --bg:       #FAF9F8;
+  --surface:  #FFFFFF;
+  --surface2: #F3F2F1;
+  --surface3: #EDEBE9;
+  --border:   #E1DFDD;
+  --text:     #201F1E;
+  --text2:    #3B3A39;
+  --text3:    #706E6C;
+  --accent:   #0F6CBD;
+  --accent2:  #A19F9D;
+  --ok:       #16a34a;
+  --warn:     #d97706;
+  --danger:   #dc2626;
+  --info:     #0284c7;
+}
+
+/* ── LEENAI 테마 — Calm 세이지 그린 ── */
+[data-theme="leenai"] {
+  --bg:       #DCEBD8;
+  --surface:  #F0F5EF;
+  --surface2: #D4E8D0;
+  --surface3: #C5DCC0;
+  --border:   #A8C8A3;
+  --text:     #1F2A22;
+  --text2:    #2E4032;
+  --text3:    #4E6055;
+  --accent:   #2F6B45;
+  --accent2:  #3F6FA8;
+  --ok:       #16a34a;
+  --warn:     #d97706;
+  --danger:   #dc2626;
+  --info:     #0284c7;
+}
+
+/* ── FOCUS 테마 — 청회색 집중 모드 ── */
+[data-theme="focus"] {
+  --bg:       #D8DDE8;
+  --surface:  #EDF0F5;
+  --surface2: #CDD4E0;
+  --surface3: #BEC8D6;
+  --border:   #9DAABE;
+  --text:     #202733;
+  --text2:    #2E3A4A;
+  --text3:    #4E5D6E;
+  --accent:   #315F9E;
+  --accent2:  #2F7D6A;
+  --ok:       #16a34a;
+  --warn:     #d97706;
+  --danger:   #dc2626;
+  --info:     #0284c7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Meiryo', 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+/* Header */
+.header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 54px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header-left { display: flex; align-items: center; gap: 10px; }
+.logo { width: 30px; height: 30px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #fff; }
+.header-title { font-size: 14px; font-weight: 700; }
+.header-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.header-status { display: flex; gap: 8px; align-items: center; }
+.conn-badge { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.conn-badge.offline { background: var(--surface2); color: var(--text3); }
+.conn-badge.connecting { background: rgba(245,158,11,0.15); color: var(--warn); }
+.conn-badge.online { background: rgba(34,197,94,0.15); color: var(--ok); }
+.user-chip { font-size: 11px; color: var(--accent); background: rgba(79,142,247,0.12); padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+
+/* Login Card */
+.login-card { max-width: 480px; margin: 60px auto; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 36px; text-align: center; }
+.login-icon { font-size: 40px; margin-bottom: 12px; }
+.login-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; line-height: 1.5; }
+.login-btn { background: var(--accent); color: #fff; border: none; padding: 14px 32px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.login-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.login-skip { display: block; margin-top: 16px; color: var(--text2); font-size: 12px; cursor: pointer; background: none; border: none; font-family: inherit; }
+.login-skip:hover { color: var(--text); }
+
+/* Loading Overlay */
+.loading-overlay { position: fixed; inset: 0; background: rgba(13,17,23,0.85); z-index: 1000; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+.loading-overlay.show { display: flex; }
+.spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: var(--text2); }
 
 /* Tabs */
-.tabs{background:var(--frame);border-bottom:1px solid var(--border);display:flex;padding:0 24px;gap:2px;overflow-x:auto;}
-.tab{padding:11px 16px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all 0.2s;background:none;border-left:none;border-right:none;border-top:none;font-family:inherit;}
-.tab:hover{color:var(--text);}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tabs { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; padding: 0 24px; gap: 2px; overflow-x: auto; }
+.tab { padding: 11px 16px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; background: none; border-left: none; border-right: none; border-top: none; font-family: inherit; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-.main{max-width:720px;margin:0 auto;padding:28px 20px;}
-.tab-content{display:none;}
-.tab-content.active{display:block;}
+.main { max-width: 720px; margin: 0 auto; padding: 28px 20px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
 
 /* Progress Bar */
-.progress-bar{display:flex;align-items:center;margin-bottom:28px;gap:0;overflow-x:auto;padding-bottom:4px;}
-.prog-item{display:flex;flex-direction:column;align-items:center;min-width:48px;}
-.prog-dot{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--text3);transition:all 0.3s;}
-.prog-dot.done{background:var(--ok);border-color:var(--ok);color:#fff;font-size:12px;}
-.prog-dot.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 0 4px rgba(79,142,247,0.2);}
-.prog-label{font-size:9px;color:var(--text3);margin-top:3px;text-align:center;max-width:46px;line-height:1.2;}
-.prog-line{flex:1;height:2px;background:var(--border);min-width:10px;max-width:32px;margin-bottom:14px;transition:background 0.3s;}
-.prog-line.done{background:var(--ok);}
+.progress-bar { display: flex; align-items: center; margin-bottom: 28px; gap: 0; overflow-x: auto; padding-bottom: 4px; }
+.prog-item { display: flex; flex-direction: column; align-items: center; min-width: 48px; }
+.prog-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--text3); transition: all 0.3s; }
+.prog-dot.done { background: var(--ok); border-color: var(--ok); color: #fff; font-size: 12px; }
+.prog-dot.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 0 4px rgba(79,142,247,0.2); }
+.prog-label { font-size: 9px; color: var(--text3); margin-top: 3px; text-align: center; max-width: 46px; line-height: 1.2; }
+.prog-line { flex: 1; height: 2px; background: var(--border); min-width: 10px; max-width: 32px; margin-bottom: 14px; transition: background 0.3s; }
+.prog-line.done { background: var(--ok); }
 
-.wizard-card{background:var(--read);border:1px solid var(--border);border-radius:var(--radius);padding:28px;animation:fadeIn 0.22s ease;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-.step-label{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
-.step-question{font-size:20px;font-weight:700;line-height:1.4;margin-bottom:6px;}
-.step-hint{font-size:13px;color:var(--text2);margin-bottom:20px;}
+.wizard-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; animation: fadeIn 0.22s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.step-label { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+.step-question { font-size: 20px; font-weight: 700; line-height: 1.4; margin-bottom: 6px; }
+.step-hint { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
 
-.suggest-btn{width:100%;background:linear-gradient(135deg,rgba(79,142,247,.12),rgba(110,231,183,.06));border:1.5px solid var(--accent);border-radius:var(--radius);padding:14px 18px;cursor:pointer;text-align:left;transition:all 0.2s;margin-bottom:10px;position:relative;overflow:hidden;font-family:inherit;color:var(--text);}
-.suggest-btn:hover{background:linear-gradient(135deg,rgba(79,142,247,.22),rgba(110,231,183,.12));transform:translateY(-1px);}
-.suggest-btn-main{font-size:16px;font-weight:700;}
-.suggest-btn-sub{font-size:12px;color:var(--accent2);margin-top:3px;}
-.suggest-pct{position:absolute;top:12px;right:14px;background:rgba(110,231,183,.15);color:var(--accent2);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;}
+.suggest-btn { width: 100%; background: linear-gradient(135deg, rgba(79,142,247,0.12), rgba(110,231,183,0.06)); border: 1.5px solid var(--accent); border-radius: var(--radius); padding: 14px 18px; cursor: pointer; text-align: left; transition: all 0.2s; margin-bottom: 10px; position: relative; overflow: hidden; font-family: inherit; color: var(--text); }
+.suggest-btn:hover { background: linear-gradient(135deg, rgba(79,142,247,0.22), rgba(110,231,183,0.12)); transform: translateY(-1px); }
+.suggest-btn-main { font-size: 16px; font-weight: 700; }
+.suggest-btn-sub { font-size: 12px; color: var(--accent2); margin-top: 3px; }
+.suggest-pct { position: absolute; top: 12px; right: 14px; background: rgba(110,231,183,0.15); color: var(--accent2); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
 
-.option-grid{display:grid;gap:8px;margin-bottom:12px;}
-.option-grid.col2{grid-template-columns:1fr 1fr;}
-.option-grid.col3{grid-template-columns:1fr 1fr 1fr;}
-.option-grid.col4{grid-template-columns:repeat(4,1fr);}
-.opt-btn{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:11px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);transition:all 0.2s;text-align:center;font-family:inherit;}
-.opt-btn:hover{border-color:var(--accent);color:var(--text);}
-.opt-btn.selected{border-color:var(--accent);background:rgba(79,142,247,.1);color:var(--accent);}
+.option-grid { display: grid; gap: 8px; margin-bottom: 12px; }
+.option-grid.col2 { grid-template-columns: 1fr 1fr; }
+.option-grid.col3 { grid-template-columns: 1fr 1fr 1fr; }
+.option-grid.col4 { grid-template-columns: repeat(4,1fr); }
+.opt-btn { background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 11px 12px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text2); transition: all 0.2s; text-align: center; font-family: inherit; }
+.opt-btn:hover { border-color: var(--accent); color: var(--text); }
+.opt-btn.selected { border-color: var(--accent); background: rgba(79,142,247,0.1); color: var(--accent); }
 
-.num-input{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:15px;font-weight:600;color:var(--text);width:130px;text-align:right;transition:border 0.2s;font-family:inherit;}
-.num-input:focus{outline:none;border-color:var(--accent);}
-.num-unit{font-size:13px;color:var(--text2);font-weight:600;}
-.num-input-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-.quick-nums{display:flex;gap:6px;flex-wrap:wrap;}
-.quick-num{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;transition:all 0.2s;}
-.quick-num:hover{border-color:var(--accent);color:var(--accent);}
-.text-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:14px;color:var(--text);transition:border 0.2s;margin-bottom:8px;font-family:inherit;}
-.text-input:focus{outline:none;border-color:var(--accent);}
-textarea.text-input{resize:vertical;min-height:70px;}
+.num-input { background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 15px; font-weight: 600; color: var(--text); width: 130px; text-align: right; transition: border 0.2s; font-family: inherit; }
+.num-input:focus { outline: none; border-color: var(--accent); }
+.num-unit { font-size: 13px; color: var(--text2); font-weight: 600; }
+.num-input-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.quick-nums { display: flex; gap: 6px; flex-wrap: wrap; }
+.quick-num { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 11px; font-size: 12px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.2s; }
+.quick-num:hover { border-color: var(--accent); color: var(--accent); }
+.text-input { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 14px; color: var(--text); transition: border 0.2s; margin-bottom: 8px; font-family: inherit; }
+.text-input:focus { outline: none; border-color: var(--accent); }
+textarea.text-input { resize: vertical; min-height: 70px; }
 
-.search-wrap{position:relative;margin-bottom:12px;}
-.search-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px 10px 36px;font-size:14px;color:var(--text);transition:border 0.2s;font-family:inherit;}
-.search-input:focus{outline:none;border-color:var(--accent);}
-.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none;}
-.dropdown{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);z-index:50;max-height:260px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4);display:none;}
-.dropdown.open{display:block;}
-.dropdown-item{padding:9px 14px;cursor:pointer;transition:background 0.15s;border-bottom:1px solid var(--border);}
-.dropdown-item:last-child{border-bottom:none;}
-.dropdown-item:hover{background:var(--surface2);}
-.dropdown-item-main{font-size:13px;font-weight:600;}
-.dropdown-item-sub{font-size:11px;color:var(--text2);margin-top:2px;}
-.dropdown-new{padding:10px 14px;cursor:pointer;color:var(--accent);font-size:13px;font-weight:700;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px;}
-.dropdown-new:hover{background:rgba(79,142,247,.08);}
+.search-wrap { position: relative; margin-bottom: 12px; }
+.search-input { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px 10px 36px; font-size: 14px; color: var(--text); transition: border 0.2s; font-family: inherit; }
+.search-input:focus { outline: none; border-color: var(--accent); }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 14px; pointer-events: none; }
+.dropdown { position: absolute; top: calc(100% + 2px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); z-index: 50; max-height: 260px; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4); display: none; }
+.dropdown.open { display: block; }
+.dropdown-item { padding: 9px 14px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--border); }
+.dropdown-item:last-child { border-bottom: none; }
+.dropdown-item:hover { background: var(--surface2); }
+.dropdown-item-main { font-size: 13px; font-weight: 600; }
+.dropdown-item-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.dropdown-new { padding: 10px 14px; cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 700; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+.dropdown-new:hover { background: rgba(79,142,247,0.08); }
 
-.pa-badge{display:inline-block;background:rgba(79,142,247,.15);color:var(--accent);font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:4px;}
-.code-badge{display:inline-block;background:rgba(110,231,183,.15);color:var(--accent2);font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:4px;}
-.ryakugo-badge{display:inline-block;background:rgba(245,158,11,.15);color:var(--warn);font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;}
+.pa-badge { display: inline-block; background: rgba(79,142,247,0.15); color: var(--accent); font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
+.code-badge { display: inline-block; background: rgba(110,231,183,0.15); color: var(--accent2); font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
+.ryakugo-badge { display: inline-block; background: rgba(245,158,11,0.15); color: var(--warn); font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
 
-.recent-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
-.chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;transition:all 0.2s;}
-.chip:hover{border-color:var(--accent);color:var(--accent);}
-.chip-label{font-size:10px;color:var(--text3);margin-bottom:4px;}
+.recent-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.2s; }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; }
 
-.warn-box{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--warn);margin-bottom:10px;}
-.info-box{background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.2);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--accent2);margin-bottom:10px;}
-.err-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--danger);margin-bottom:10px;}
+.warn-box { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--warn); margin-bottom: 10px; }
+.info-box { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.2); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--accent2); margin-bottom: 10px; }
+.err-box { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--danger); margin-bottom: 10px; }
 
-.nav-row{display:flex;gap:10px;margin-top:20px;}
-.btn-back{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 18px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;transition:all 0.2s;font-family:inherit;}
-.btn-back:hover{border-color:var(--text2);color:var(--text);}
-.btn-next{flex:1;background:var(--accent-btn);border:none;border-radius:var(--radius-sm);padding:12px 20px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;transition:all 0.2s;font-family:inherit;}
-.btn-next:hover{filter:brightness(1.08);}
-.btn-next:disabled{opacity:0.3;cursor:not-allowed;}
+.nav-row { display: flex; gap: 10px; margin-top: 20px; }
+.btn-back { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 18px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.btn-back:hover { border-color: var(--text2); color: var(--text); }
+.btn-next { flex: 1; background: var(--accent); border: none; border-radius: var(--radius-sm); padding: 12px 20px; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.btn-next:hover { opacity: 0.88; }
+.btn-next:disabled { opacity: 0.3; cursor: not-allowed; }
 
-.detail-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
-.detail-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;position:relative;}
-.detail-card-head{display:flex;justify-content:space-between;align-items:flex-start;}
-.detail-card-title{font-size:14px;font-weight:700;}
-.detail-card-amount{font-size:14px;font-weight:700;color:var(--accent2);}
-.detail-card-body{font-size:12px;color:var(--text2);margin-top:4px;}
-.detail-card-remark{font-size:12px;color:var(--warn);margin-top:4px;}
-.btn-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0 4px;transition:color 0.2s;}
-.btn-del:hover{color:var(--danger);}
+.detail-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.detail-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; position: relative; }
+.detail-card-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.detail-card-title { font-size: 14px; font-weight: 700; }
+.detail-card-amount { font-size: 14px; font-weight: 700; color: var(--accent2); }
+.detail-card-body { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.detail-card-remark { font-size: 12px; color: var(--warn); margin-top: 4px; }
+.btn-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; padding: 0 4px; transition: color 0.2s; }
+.btn-del:hover { color: var(--danger); }
 
-.preview-table{width:100%;border-collapse:collapse;margin:14px 0;}
-.preview-table th,.preview-table td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top;}
-.preview-table th{color:var(--text);font-weight:700;background:var(--frame);width:34%;}
-.preview-table td{color:var(--text);font-weight:600;}
-.preview-section-row td,.preview-section-row th{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;padding-top:14px;background:transparent;}
+.preview-table { width: 100%; border-collapse: collapse; margin: 14px 0; }
+.preview-table th, .preview-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+.preview-table th { color: var(--text2); font-weight: 600; width: 34%; }
+.preview-table td { color: var(--text); font-weight: 600; }
+.preview-section-row td, .preview-section-row th { font-size: 10px; font-weight: 700; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; padding-top: 14px; }
 
-.complete-actions{display:grid;gap:10px;margin-top:18px;}
-.action-btn{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:all 0.2s;text-align:left;width:100%;font-family:inherit;color:var(--text);}
-.action-btn:hover{border-color:var(--accent);}
-.action-btn.primary{border-color:var(--accent);background:rgba(79,142,247,.08);}
-.action-icon{font-size:20px;width:32px;text-align:center;}
-.action-text-main{font-size:14px;font-weight:700;}
-.action-text-sub{font-size:11px;color:var(--text2);margin-top:2px;}
+.complete-actions { display: grid; gap: 10px; margin-top: 18px; }
+.action-btn { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; transition: all 0.2s; text-align: left; width: 100%; font-family: inherit; color: var(--text); }
+.action-btn:hover { border-color: var(--accent); }
+.action-btn.primary { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+.action-icon { font-size: 20px; width: 32px; text-align: center; }
+.action-text-main { font-size: 14px; font-weight: 700; }
+.action-text-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
 
-.new-form{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;}
-.new-form-title{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:14px;}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
-.form-row.full{grid-template-columns:1fr;}
-.form-label{font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px;}
-.form-input{width:100%;background:var(--read);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px;color:var(--text);transition:border 0.2s;font-family:inherit;}
-.form-input:focus{outline:none;border-color:var(--accent);}
+.new-form { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+.new-form-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-row.full { grid-template-columns: 1fr; }
+.form-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-bottom: 4px; }
+.form-input { width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; color: var(--text); transition: border 0.2s; font-family: inherit; }
+.form-input:focus { outline: none; border-color: var(--accent); }
 
-.mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
-.mode-card{background:var(--surface2);border:2px solid var(--border);border-radius:var(--radius);padding:20px 16px;cursor:pointer;transition:all 0.2s;text-align:center;}
-.mode-card:hover{border-color:var(--accent);transform:translateY(-2px);}
-.mode-card.selected{border-color:var(--accent);background:rgba(79,142,247,.08);}
-.mode-icon{font-size:28px;margin-bottom:8px;}
-.mode-name{font-size:15px;font-weight:700;margin-bottom:4px;}
-.mode-desc{font-size:11px;color:var(--text2);line-height:1.4;}
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.mode-card { background: var(--surface2); border: 2px solid var(--border); border-radius: var(--radius); padding: 20px 16px; cursor: pointer; transition: all 0.2s; text-align: center; }
+.mode-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.mode-card.selected { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+.mode-icon { font-size: 28px; margin-bottom: 8px; }
+.mode-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.mode-desc { font-size: 11px; color: var(--text2); line-height: 1.4; }
 
-.type-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.type-card{background:var(--surface2);border:2px solid var(--border);border-radius:var(--radius);padding:22px 16px;cursor:pointer;transition:all 0.2s;text-align:center;}
-.type-card:hover{border-color:var(--accent);transform:translateY(-2px);}
-.type-card.selected{border-color:var(--accent);background:rgba(79,142,247,.08);}
-.type-icon{font-size:30px;margin-bottom:8px;}
-.type-name{font-size:15px;font-weight:700;margin-bottom:4px;}
-.type-desc{font-size:11px;color:var(--text2);}
+.type-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.type-card { background: var(--surface2); border: 2px solid var(--border); border-radius: var(--radius); padding: 22px 16px; cursor: pointer; transition: all 0.2s; text-align: center; }
+.type-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.type-card.selected { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+.type-icon { font-size: 30px; margin-bottom: 8px; }
+.type-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.type-desc { font-size: 11px; color: var(--text2); }
 
-.history-list{display:flex;flex-direction:column;gap:10px;}
-.history-item{background:var(--read);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
-.history-no{font-size:13px;font-weight:700;color:var(--accent);}
-.history-packer{font-size:14px;font-weight:700;margin-top:2px;}
-.history-detail{font-size:12px;color:var(--text2);margin-top:3px;}
-.history-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
-.status-pending{background:rgba(245,158,11,.15);color:var(--warn);}
-.status-done{background:rgba(34,197,94,.15);color:var(--ok);}
+.history-list { display: flex; flex-direction: column; gap: 10px; }
+.history-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.history-no { font-size: 13px; font-weight: 700; color: var(--accent); }
+.history-packer { font-size: 14px; font-weight: 700; margin-top: 2px; }
+.history-detail { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.history-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.status-pending { background: rgba(245,158,11,0.15); color: var(--warn); }
+.status-done { background: rgba(34,197,94,0.15); color: var(--ok); }
 
-.section-title{font-size:13px;font-weight:700;color:var(--text2);margin-bottom:14px;letter-spacing:0.5px;}
+.section-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 14px; letter-spacing: 0.5px; }
+.powered { text-align: center; font-size: 11px; color: var(--text3); margin-top: 40px; padding: 20px; }
 
-.selected-box{background:rgba(110,231,183,.07);border:1px solid rgba(110,231,183,.25);border-radius:var(--radius-sm);padding:11px 14px;margin-bottom:12px;}
-.selected-box-label{font-size:11px;color:var(--accent2);font-weight:700;margin-bottom:3px;}
-.selected-box-name{font-size:15px;font-weight:700;}
-.selected-box-sub{font-size:12px;color:var(--text2);margin-top:2px;}
+.selected-box { background: rgba(110,231,183,0.07); border: 1px solid rgba(110,231,183,0.25); border-radius: var(--radius-sm); padding: 11px 14px; margin-bottom: 12px; }
+.selected-box-label { font-size: 11px; color: var(--accent2); font-weight: 700; margin-bottom: 3px; }
+.selected-box-name { font-size: 15px; font-weight: 700; }
+.selected-box-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
 
-.divider{height:1px;background:var(--border);margin:16px 0;}
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
 
-.history-mini{background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px;}
-.history-mini-label{color:var(--text3);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;}
-.history-mini-row{color:var(--text2);padding:2px 0;}
-.history-mini-row strong{color:var(--text);}
+.history-mini { background: var(--surface2); border-radius: 8px; padding: 10px 12px; margin-top: 10px; font-size: 11px; }
+.history-mini-label { color: var(--text3); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.history-mini-row { color: var(--text2); padding: 2px 0; }
+.history-mini-row strong { color: var(--text); }
 
-.master-card{background:var(--read);border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin-bottom:8px;}
+.master-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; margin-bottom: 8px; }
 
-.packer-list{max-height:600px;overflow-y:auto;padding-right:4px;}
-.packer-list::-webkit-scrollbar{width:6px;}
-.packer-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
-
-@media print{.ln-header,.ln-footer,.tabs{display:none!important;}}
+/* Scrollable list for 93 packers */
+.packer-list { max-height: 600px; overflow-y: auto; padding-right: 4px; }
+.packer-list::-webkit-scrollbar { width: 6px; }
+.packer-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
 </head>
 <body>
 
-<div id="app" style="display:none">
-  <!-- ln-header は LEENAI が挿入 -->
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">処理中...</div>
+</div>
 
-  <!-- Tabs -->
-  <div class="tabs" id="tabsBar" style="display:none;">
-    <button class="tab active" onclick="showTab('wizard')">📝 契約入力</button>
-    <button class="tab" onclick="showTab('history')">📋 履歴</button>
-    <button class="tab" onclick="showTab('master')">🗂 マスター</button>
-  </div>
-
-  <!-- 契約入力 -->
-  <div id="tab-wizard" class="tab-content active" style="display:none;">
-  <div class="main">
-    <div class="progress-bar" id="progressBar"></div>
-    <div id="wizardContainer"></div>
-  </div>
-  </div>
-
-  <!-- 履歴 -->
-  <div id="tab-history" class="tab-content" style="display:none;">
-  <div class="main">
-    <div class="section-title" id="historyTitle">最近の購買契約 (Dataverse連携時に読み込み)</div>
-    <div class="history-list" id="historyList"></div>
-  </div>
-  </div>
-
-  <!-- マスター -->
-  <div id="tab-master" class="tab-content" style="display:none;">
-  <div class="main">
-    <div class="section-title">購買元マスター <span id="packerCount" style="color:var(--accent);"></span></div>
-    <div class="search-wrap" style="margin-bottom:14px;">
-      <span class="search-icon">🔍</span>
-      <input class="search-input" id="masterSearch" placeholder="会社名・PA ID・コード・略号で検索..." oninput="filterMasterList()">
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">LN</div>
+    <div>
+      <div class="header-title">LEENAI 契約入力アシスタント</div>
+      <div class="header-sub">v1.5 (2026-08-18) &nbsp;|&nbsp; SYS-A-01 &nbsp;|&nbsp; Dataverse連携 &nbsp;|&nbsp; Excel契約書生成</div>
     </div>
-    <div class="packer-list" id="masterList"></div>
   </div>
+  <div class="header-status">
+    <span class="user-chip" id="userChip" style="display:none;"></span>
+    <span class="conn-badge offline" id="connBadge">● オフライン</span>
+    <button id="themeToggleBtn" onclick="toggleTheme()"
+      style="margin-left:6px;background:var(--surface2);border:1px solid var(--border);
+             border-radius:20px;padding:4px 12px;cursor:pointer;font-size:12px;
+             color:var(--text);display:flex;align-items:center;gap:5px;
+             transition:all .2s;white-space:nowrap;font-family:inherit;">
+      🌙 ダーク
+    </button>
   </div>
+</div>
 
-  <!-- ln-footer は LEENAI が挿入 -->
+<!-- Login Card (初期画面) -->
+<div class="login-card" id="loginCard">
+  <div class="login-icon">🔐</div>
+  <div class="login-title">COMPASS Dataverse に接続</div>
+  <div class="login-sub">
+    ログインすると 93社の購買元マスター、過去3,961件の契約履歴、<br>
+    品目別単価統計が自動ロードされます。
+  </div>
+  <button class="login-btn" onclick="startLogin()">🚀 ログイン</button>
+  <button class="login-skip" onclick="useOfflineMode()">データなしで起動 (DEMO)</button>
+</div>
+
+<!-- Tabs -->
+<div class="tabs" id="tabsBar" style="display:none;">
+  <button class="tab active" onclick="showTab('wizard')">📝 契約入力</button>
+  <button class="tab" onclick="showTab('history')">📋 履歴</button>
+  <button class="tab" onclick="showTab('master')">🗂 マスター</button>
+</div>
+
+<!-- 契約入力 -->
+<div id="tab-wizard" class="tab-content active" style="display:none;">
+<div class="main">
+  <div class="progress-bar" id="progressBar"></div>
+  <div id="wizardContainer"></div>
+</div>
+</div>
+
+<!-- 履歴 -->
+<div id="tab-history" class="tab-content" style="display:none;">
+<div class="main">
+  <div class="section-title" id="historyTitle">最近の購買契約 (Dataverse連携時に読み込み)</div>
+  <div class="history-list" id="historyList"></div>
+  <div class="powered">✦ Powered by LEENAI Automation System</div>
+</div>
+</div>
+
+<!-- マスター -->
+<div id="tab-master" class="tab-content" style="display:none;">
+<div class="main">
+  <div class="section-title">購買元マスター <span id="packerCount" style="color:var(--accent);"></span></div>
+  <div class="search-wrap" style="margin-bottom:14px;">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="masterSearch" placeholder="会社名・PA ID・コード・略号で検索..." oninput="filterMasterList()">
+  </div>
+  <div class="packer-list" id="masterList"></div>
+  <div class="powered">✦ Powered by LEENAI Automation System</div>
+</div>
 </div>
 
 <script>
+
+// ══════════════════════════════════════════════════════
+// テーマ管理 (v1.8 標準 — 4段階循環)
+// ══════════════════════════════════════════════════════
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'dark';
+  const order = ['dark', 'light', 'leenai', 'focus'];
+  const next = order[(order.indexOf(current) + 1) % order.length];
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('leenai_theme', next);
+  updateThemeBtn(next);
+}
+
+function updateThemeBtn(theme) {
+  const btn = document.getElementById('themeToggleBtn');
+  if (!btn) return;
+  const labels = {
+    dark:   '🌙 ダーク',
+    light:  '☀️ ライト',
+    leenai: '🌿 LEENAI',
+    focus:  '🎯 FOCUS'
+  };
+  btn.textContent = labels[theme] || '🌙 ダーク';
+}
+
+// 페이지 로드 시 이전 테마 자동 복원
+(function() {
+  const saved = localStorage.getItem('leenai_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.addEventListener('DOMContentLoaded', () => updateThemeBtn(saved));
+})();
+
 // ══════════════════════════════════════════════════════
 // 設定・定数
 // ══════════════════════════════════════════════════════
-const DV_URL = 'https://orgde512c6f.crm7.dynamics.com';
-const DV_API = DV_URL + '/api/data/v9.2';
+const CLIENT_ID    = 'f071a165-5e9b-44bf-b6a1-baba654524db';
+const TENANT_ID    = 'a56988ff-c2b8-4df8-9727-889ad4205198';
+const DV_URL       = 'https://orgde512c6f.crm7.dynamics.com';
+const DV_API       = `${DV_URL}/api/data/v9.2`;
+const REDIRECT_URI = location.origin + location.pathname;
+const SCOPE        = `${DV_URL}/user_impersonation openid profile`;
 
 const POLS = ['東京','横浜','大阪','神戸','名古屋','博多','仙台','那覇','金沢','石狩','新潟'];
 const AVG_KG_PER_CONTAINER = 23000;
-const DEMO_EXCHANGE = 156.83;
+const DEMO_EXCHANGE = 156.83;  // 2026-04-13 みずほTTB
 
+// 과거 계약번호 → 약자 추출 (클라이언트 사이드 분석)
 function extractRyakugoMap(contracts) {
   const counter = {};
   contracts.forEach(c => {
@@ -264,9 +434,9 @@ function extractRyakugoMap(contracts) {
 // 状態 (State)
 // ══════════════════════════════════════════════════════
 let DATAVERSE_MODE = false;
-let PACKERS = [];
-let RECENT_CONTRACTS = [];
-let CONTRACT_ITEMS = {};
+let PACKERS = [];      // [{id(guid), cr49f_id, packer, code, name, address, person, tel, fax, payment, ryakugo}]
+let RECENT_CONTRACTS = [];  // 最近300件
+let CONTRACT_ITEMS = {}; // {contract_id: [items...]}
 let ITEMS_MASTER = [
   { code:'JOCC', name:'段ボール', doc:'Old Corrugated Containers' },
   { code:'JONP', name:'新聞', doc:'Old Newspaper' },
@@ -290,6 +460,7 @@ function initState() {
     packer: null, contractDate: today(),
     paymentTerm: '', exchangeRate: DEMO_EXCHANGE, deadline: '',
     details: [], currentDetail: null, contractNo: '', reviseDate: today(),
+    accessToken: '', tokenExpiry: 0, userEmail: '', userName: '',
   };
 }
 
@@ -298,40 +469,89 @@ function endOfMonth() { const d=new Date(); const l=new Date(d.getFullYear(),d.g
 function pad(n) { return String(n).padStart(2,'0'); }
 function shortName(n) { return (n||'').replace('株式会社','').replace('有限会社','').replace('合同会社','').replace('合資会社','').trim(); }
 
-// ══════════════════════════════════════════════════════
-// ローディング (共通に委譲)
-// ══════════════════════════════════════════════════════
-function showLoading(text) { LEENAI.loading.show(text || '処理中...'); }
-function hideLoading() { LEENAI.loading.hide(); }
-
-// ══════════════════════════════════════════════════════
-// LEENAI 共通 初期化
-// ══════════════════════════════════════════════════════
-async function startTool() {
-  DATAVERSE_MODE = true;
-  document.getElementById('tabsBar').style.display = 'flex';
-  document.getElementById('tab-wizard').style.display = 'block';
-  await loadAllData();
-  renderStep();
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text || '処理中...';
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+function setConn(status, text) {
+  const b = document.getElementById('connBadge');
+  b.className = 'conn-badge ' + status;
+  b.textContent = text;
 }
 
-LEENAI.init({
-  sys:     'A-01',
-  name:    '契約入力アシスタント',
-  version: '2.0',
-  date:    '2026-10-08',
-  desc:    'Dataverse連携で購買契約書を自動作成します',
-  onReady: startTool,
-});
+// ══════════════════════════════════════════════════════
+// OAuth (PKCE) — PO_TOOL v2.1 패턴
+// ══════════════════════════════════════════════════════
+function b64url(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); }
+async function sha256(str) { return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)); }
+function randomStr(len=64) { const a=new Uint8Array(len); crypto.getRandomValues(a); return b64url(a).slice(0,len); }
 
-// ══════════════════════════════════════════════════════
-// DATAVERSE GET
-// ══════════════════════════════════════════════════════
+async function startLogin() {
+  setConn('connecting', '● 接続中...');
+  const verifier = randomStr(64);
+  const challenge = b64url(await sha256(verifier));
+  const state = 'dv_' + randomStr(16);
+  sessionStorage.setItem('pkce_verifier', verifier);
+  sessionStorage.setItem('pkce_state', state);
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID, response_type: 'code', redirect_uri: REDIRECT_URI,
+    scope: SCOPE, state, code_challenge: challenge, code_challenge_method: 'S256',
+    prompt: 'select_account'
+  });
+  location.href = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize?${params}`;
+}
+
+async function handleCallback() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  if (!code) return false;
+  history.replaceState({}, '', location.pathname);
+
+  showLoading('Dataverse認証中...');
+  try {
+    const verifier = sessionStorage.getItem('pkce_verifier');
+    const res = await fetch(`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        client_id: CLIENT_ID, grant_type: 'authorization_code',
+        code, redirect_uri: REDIRECT_URI, code_verifier: verifier, scope: SCOPE
+      })
+    });
+    const data = await res.json();
+    if (!data.access_token) throw new Error(data.error_description || 'トークン取得失敗');
+    S.accessToken = data.access_token;
+    S.tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+
+    // 사용자 정보
+    try {
+      const me = await fetch('https://graph.microsoft.com/v1.0/me', {
+        headers: {Authorization: `Bearer ${S.accessToken}`}
+      }).then(r => r.json());
+      S.userName = me.displayName || '';
+      S.userEmail = me.mail || me.userPrincipalName || '';
+      document.getElementById('userChip').textContent = S.userName;
+      document.getElementById('userChip').style.display = 'inline-block';
+    } catch(e) {}
+
+    setConn('online', '● Dataverse接続');
+    DATAVERSE_MODE = true;
+    await loadAllData();
+    showMainUI();
+  } catch(e) {
+    hideLoading();
+    setConn('offline', '● オフライン');
+    alert('認証エラー: ' + e.message);
+  }
+  return true;
+}
+
 async function dvGet(path) {
-  const token = await LEENAI.auth.token('dataverse');
-  const res = await fetch(DV_API + '/' + path, {
+  if (Date.now() > S.tokenExpiry) throw new Error('セッション切れ。再ログインしてください。');
+  const res = await fetch(`${DV_API}/${path}`, {
     headers: {
-      'Authorization': 'Bearer ' + token,
+      'Authorization': `Bearer ${S.accessToken}`,
       'OData-MaxVersion': '4.0', 'OData-Version': '4.0',
       'Accept': 'application/json',
       'Prefer': 'odata.include-annotations="OData.Community.Display.V1.FormattedValue"'
@@ -339,7 +559,7 @@ async function dvGet(path) {
   });
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
-    throw new Error('API ' + res.status + ': ' + (e?.error?.message || res.statusText));
+    throw new Error(`API ${res.status}: ${e?.error?.message || res.statusText}`);
   }
   return res.json();
 }
@@ -347,12 +567,13 @@ async function dvGet(path) {
 async function loadAllData() {
   try {
     showLoading('Packerマスター読み込み中... (93社)');
+    // 1. Packers - active のみ
     const packersRes = await dvGet('cr49f_packers?$filter=statecode eq 0' +
       '&$select=cr49f_packerid,cr49f_id,cr49f_packer,cr49f_packer_code,cr49f_packer_name,' +
       'cr49f_packer_address,cr49f_packer_person,cr49f_packer_tel,cr49f_parker_fax,cr49f_payment_term' +
       '&$orderby=cr49f_id asc');
     PACKERS = (packersRes.value || []).map(p => ({
-      id: p.cr49f_packerid,
+      id: p.cr49f_packerid,  // GUID
       cr49f_id: p.cr49f_id,
       packer: p.cr49f_packer || '',
       code: p.cr49f_packer_code || '',
@@ -362,16 +583,25 @@ async function loadAllData() {
       tel: p.cr49f_packer_tel || '',
       fax: p.cr49f_parker_fax || '',
       payment: p.cr49f_payment_term || '',
-      ryakugo: '',
+      ryakugo: '', // 나중에 채움
     }));
 
     showLoading('過去契約読み込み中... (最近500件)');
+    // 2. Recent contracts
     const contractsRes = await dvGet('cr49f_purchase_contracts?$top=500' +
       '&$orderby=cr49f_contract_date desc' +
       '&$select=cr49f_purchase_contractid,cr49f_purchase_contract_no,cr49f_contract_date,' +
       '_cr49f_packer_id_value,cr49f_exchange_rate,cr49f_latest_vanning,cr49f_payment_term');
     RECENT_CONTRACTS = contractsRes.value || [];
 
+    // 3. 약자 매핑 (클라이언트 사이드)
+    // 문제: _cr49f_packer_id_value는 GUID인데 COMPASS_MAPPING 에선 숫자 id를 썼음
+    // 실제로는 cr49f_packer의 cr49f_id (숫자) 필드를 매핑해야 함
+    // GUID → cr49f_id 매핑
+    const guidToNumId = {};
+    PACKERS.forEach(p => { guidToNumId[p.id.toLowerCase()] = p.cr49f_id; });
+
+    // Contract에서 GUID → 약자 추출
     const ryakuCounter = {};
     RECENT_CONTRACTS.forEach(c => {
       const cn = c.cr49f_purchase_contract_no;
@@ -394,9 +624,11 @@ async function loadAllData() {
     PACKERS.forEach(p => { p.ryakugo = guidToRyakugo[p.id.toLowerCase()] || ''; });
 
     showLoading('品目明細読み込み中... (関連品目)');
+    // 4. 最近 contracts の details (품목별 단가)
     const contractIds = RECENT_CONTRACTS.slice(0, 100).map(c => c.cr49f_purchase_contractid);
     if (contractIds.length) {
-      const filter = contractIds.map(id => '_cr49f_purchase_contract_id_value eq ' + id).join(' or ');
+      // 배치로 분할 (100개는 한번에 가능)
+      const filter = contractIds.map(id => `_cr49f_purchase_contract_id_value eq ${id}`).join(' or ');
       try {
         const detailsRes = await dvGet('cr49f_purchase_details?$filter=' + encodeURIComponent(filter) +
           '&$select=cr49f_count,cr49f_incoterms,cr49f_loading_port,cr49f_price,cr49f_quantity,' +
@@ -425,6 +657,21 @@ async function loadAllData() {
   }
 }
 
+function useOfflineMode() {
+  DATAVERSE_MODE = false;
+  setConn('offline', '● オフライン');
+  PACKERS = [];
+  showMainUI();
+  alert('オフラインモードで起動しました。\nログインするとデータが読み込まれます。');
+}
+
+function showMainUI() {
+  document.getElementById('loginCard').style.display = 'none';
+  document.getElementById('tabsBar').style.display = 'flex';
+  document.getElementById('tab-wizard').style.display = 'block';
+  renderStep();
+}
+
 // ══════════════════════════════════════════════════════
 // Stats 계산 (Packer × Item 과거 패턴)
 // ══════════════════════════════════════════════════════
@@ -439,9 +686,10 @@ function getPackerStats(packerId) {
       myItems.push({...d, date: c.cr49f_contract_date, cn: c.cr49f_purchase_contract_no});
     });
   });
+  // 集計
   const polCounter = {};
   const incoCounter = {};
-  const itemMap = {};
+  const itemMap = {}; // item_code → history[]
   myItems.forEach(d => {
     if (d.pol) polCounter[d.pol] = (polCounter[d.pol] || 0) + 1;
     if (d.inco) incoCounter[d.inco] = (incoCounter[d.inco] || 0) + 1;
@@ -479,6 +727,7 @@ function getItemStats(packerId, itemCode) {
   };
 }
 
+
 // ══════════════════════════════════════════════════════
 // Wizard — STEP 定義
 // ══════════════════════════════════════════════════════
@@ -492,9 +741,9 @@ function renderProgress() {
   const labels = getStepLabels();
   let html = '';
   labels.forEach((label, i) => {
-    if (i > 0) html += '<div class="prog-line ' + (i<=S.step?'done':'') + '"></div>';
+    if (i > 0) html += `<div class="prog-line ${i<=S.step?'done':''}"></div>`;
     const cls = i < S.step ? 'done' : i === S.step ? 'active' : '';
-    html += '<div class="prog-item"><div class="prog-dot ' + cls + '">' + (i<S.step?'✓':i+1) + '</div><div class="prog-label">' + label + '</div></div>';
+    html += `<div class="prog-item"><div class="prog-dot ${cls}">${i<S.step?'✓':i+1}</div><div class="prog-label">${label}</div></div>`;
   });
   document.getElementById('progressBar').innerHTML = html;
 }
@@ -515,6 +764,7 @@ function renderStep() {
 
 function stepNo(eff) { return S.mode === 'revise' ? eff : eff - 1; }
 
+// STEP 0: 新規/変更
 function renderStep0_Mode() {
   return `<div class="wizard-card">
     <div class="step-label">STEP 1</div>
@@ -533,6 +783,7 @@ function renderStep0_Mode() {
   </div>`;
 }
 
+// STEP 1: 타입
 function renderStep1_Type() {
   return `<div class="wizard-card">
     <div class="step-label">STEP 2</div>
@@ -549,6 +800,7 @@ function renderStep1_Type() {
   </div>`;
 }
 
+// STEP 2: Revise 번호
 function renderStep2_ReviseNo() {
   const recent = RECENT_CONTRACTS.slice(0, 6).map(c => c.cr49f_purchase_contract_no).filter(Boolean);
   return `<div class="wizard-card">
@@ -572,6 +824,7 @@ function renderStep2_ReviseNo() {
 async function loadRevise() {
   try {
     showLoading('既存契約を読み込み中...');
+    // 1. Find contract
     const cr = await dvGet(`cr49f_purchase_contracts?$filter=cr49f_purchase_contract_no eq '${S.reviseNo}'&$top=1`);
     if (!cr.value?.length) {
       hideLoading();
@@ -582,12 +835,13 @@ async function loadRevise() {
     const packerId = contract['_cr49f_packer_id_value'];
     const packer = PACKERS.find(p => p.id.toLowerCase() === packerId.toLowerCase());
     if (!packer) { hideLoading(); alert(`Packer不明: ${packerId}`); return; }
-
+    
     S.packer = packer;
     S.paymentTerm = contract.cr49f_payment_term || packer.payment;
     S.exchangeRate = contract.cr49f_exchange_rate || DEMO_EXCHANGE;
     S.deadline = (contract.cr49f_latest_vanning || '').split('T')[0] || endOfMonth();
-
+    
+    // 2. Details
     const detRes = await dvGet(`cr49f_purchase_details?$filter=_cr49f_purchase_contract_id_value eq ${contract.cr49f_purchase_contractid}&$expand=cr49f_item_id($select=cr49f_item,crcf9_item_japan)`);
     S.details = (detRes.value || []).map(d => {
       const itemCode = d.cr49f_item_id?.cr49f_item || '';
@@ -613,6 +867,7 @@ async function loadRevise() {
   }
 }
 
+// STEP 3: Packer
 function renderStep3_Packer() {
   const recent = PACKERS.filter(p => {
     return RECENT_CONTRACTS.some(c => (c['_cr49f_packer_id_value']||'').toLowerCase() === p.id.toLowerCase());
@@ -714,7 +969,7 @@ function filterPackers(showAll) {
            (p.packer||'').toLowerCase().includes(q);
   }).slice(0, 50);
   dd.innerHTML = filtered.map(packerDropItem).join('') +
-    '<div class="dropdown-new" onclick="showNewPacker()">＋ 新規業者を追加</div>';
+    `<div class="dropdown-new" onclick="showNewPacker()">＋ 新規業者を追加</div>`;
   dd.classList.add('open');
 }
 
@@ -741,7 +996,7 @@ function saveNewPacker() {
   };
   PACKERS.push(newP);
   selectPacker(newP.id);
-  alert('✅「' + name + '」をローカル登録しました。\n後でCOMPASSに手動登録してください。');
+  alert(`✅「${name}」をローカル登録しました。\n後でCOMPASSに手動登録してください。`);
   renderMaster();
 }
 
@@ -751,6 +1006,7 @@ function selectPacker(id) {
   renderStep();
 }
 
+// STEP 4: 계약일
 function renderStep4_Date() {
   return `<div class="wizard-card">
     <div class="step-label">STEP ${stepNo(4)}</div>
@@ -765,6 +1021,7 @@ function renderStep4_Date() {
   </div>`;
 }
 
+// STEP 5: 지급
 function renderStep5_Payment() {
   const sug = S.packer?.payment || '末締翌月25日払い';
   if (!S.paymentTerm) S.paymentTerm = sug;
@@ -785,6 +1042,7 @@ function renderStep5_Payment() {
   </div>`;
 }
 
+// STEP 6: 환율
 function renderStep6_Exchange() {
   if (!S.exchangeRate) S.exchangeRate = DEMO_EXCHANGE;
   return `<div class="wizard-card">
@@ -799,6 +1057,7 @@ function renderStep6_Exchange() {
   </div>`;
 }
 
+// STEP 7: 기한
 function renderStep7_Deadline() {
   if (!S.deadline) S.deadline = endOfMonth();
   return `<div class="wizard-card">
@@ -825,9 +1084,11 @@ function newDetail() {
   };
 }
 
+// STEP 8: 품목
 function renderStep8_Item() {
   if (!S.currentDetail) S.currentDetail = newDetail();
   const stats = S.packer ? getPackerStats(S.packer.id) : null;
+  // 최빈 품목
   let topItem = null;
   if (stats?.items) {
     const entries = Object.entries(stats.items).sort((a,b) => b[1].length - a[1].length);
@@ -851,6 +1112,7 @@ function renderStep8_Item() {
   </div>`;
 }
 
+// STEP 9: 수량
 function renderStep9_Qty() {
   const stats = S.packer ? getItemStats(S.packer.id, S.currentDetail.item?.code) : null;
   const sugCount = stats?.last_count || 5;
@@ -879,6 +1141,7 @@ function renderStep9_Qty() {
   </div>`;
 }
 
+// STEP 10: 단가
 function renderStep10_Price() {
   const stats = S.packer ? getItemStats(S.packer.id, S.currentDetail.item?.code) : null;
   const sug = stats?.last_price || 0;
@@ -891,7 +1154,7 @@ function renderStep10_Price() {
     ${sug ? `
     <div class="suggest-btn" onclick="S.currentDetail.price=${sug};renderStep()">
       <div class="suggest-btn-main">💴 ¥${sug} / KG</div>
-      <div class="suggest-btn-sub">${S.currentDetail.item?.code}の直近単価 ${hist.length ? '· 推移: ' + hist.map(p => '¥'+p).join(' → ') : ''}</div>
+      <div class="suggest-btn-sub">${S.currentDetail.item?.code}の直近単価 ${hist.length ? '· 推移: ' + hist.map(p => `¥${p}`).join(' → ') : ''}</div>
     </div>` : ''}
     <div class="num-input-row"><input type="number" class="num-input" value="${S.currentDetail.price||''}" step="0.1" oninput="S.currentDetail.price=parseFloat(this.value)||0;calcAmt()"><span class="num-unit">¥ / KG</span></div>
     ${isWarn ? `<div class="warn-box">⚠️ 直近単価(¥${sug})より ${Math.abs(((S.currentDetail.price-sug)/sug*100)).toFixed(0)}% ${S.currentDetail.price>sug?'高い':'低い'}単価です。確認しましたか？</div>` : ''}
@@ -906,6 +1169,7 @@ function calcAmt() {
     el.textContent = '¥' + Math.floor(S.currentDetail.qty*S.currentDetail.price).toLocaleString();
 }
 
+// STEP 11: 품목별 조건
 function renderStep11_Condition() {
   const stats = S.packer ? getItemStats(S.packer.id, S.currentDetail.item?.code) : null;
   const sugPol = S.currentDetail.pol || stats?.last_pol || '';
@@ -938,6 +1202,7 @@ function confirmDetail() {
   S.currentDetail = null;
 }
 
+// STEP 12: 품목 확인
 function renderStep12_DetailConfirm() {
   const subtotal = S.details.reduce((s,d) => s+d.amount, 0);
   return `<div class="wizard-card">
@@ -961,6 +1226,7 @@ function renderStep12_DetailConfirm() {
 
 function removeDetail(i) { S.details.splice(i,1); renderStep(); }
 
+// STEP 13: 계약번호
 function renderStep13_ContractNo() {
   if (!S.contractNo || S.mode === 'new') S.contractNo = suggestNo();
   return `<div class="wizard-card">
@@ -981,13 +1247,14 @@ function suggestNo() {
   const d = new Date();
   const yy = String(d.getFullYear()).slice(2);
   const mm = pad(d.getMonth()+1);
-  const prefix = 'LR-' + yy + mm + ryakugo;
+  const prefix = `LR-${yy}${mm}${ryakugo}`;
   const existing = RECENT_CONTRACTS.filter(c => (c.cr49f_purchase_contract_no||'').startsWith(prefix));
   const nums = existing.map(c => parseInt((c.cr49f_purchase_contract_no||'').slice(prefix.length)) || 0);
   const nextN = (nums.length ? Math.max(...nums) : 0) + 1;
-  return prefix + nextN;
+  return `${prefix}${nextN}`;
 }
 
+// STEP 14: 最終確認
 function renderStep14_Preview() {
   const subtotal = S.details.reduce((s,d) => s+d.amount, 0);
   const tax = Math.floor(subtotal*0.10);
@@ -1038,13 +1305,12 @@ function renderStep14_Preview() {
 // ══════════════════════════════════════════════════════
 function buildContractJson() {
   const subtotal = S.details.reduce((s,d) => s+d.amount, 0);
-  const u = LEENAI.user;
   return {
     meta: {
       version: 'v1.3',
       source: 'LEENAI_CONTRACT_TOOL',
       created_at: new Date().toISOString(),
-      created_by: (u && u.name) || 'unknown',
+      created_by: S.userName || 'unknown',
       status: 'pending_compass_registration',
     },
     contract: {
@@ -1087,15 +1353,16 @@ function buildContractJson() {
 
 function doSaveJson() {
   const data = buildContractJson();
-  const filename = S.contractDate + '_' + S.type + '_' + S.contractNo + '_' + shortName(S.packer?.name||'') + '.json';
+  // 実運用では SharePoint にPOST。ここではダウンロード
+  const filename = `${S.contractDate}_${S.type}_${S.contractNo}_${shortName(S.packer?.name||'')}.json`;
   downloadJson(data, filename);
-  alert('💾 [DEMO]\n\n保存先 (実運用予定):\nSharePoint LEENAI_CONTRACT_DRAFT/処理待ち/\n  ' + filename + '\n\n夜間CoworkがCOMPASSに自動登録します。\n\n現在はブラウザから JSONをダウンロードしました。');
+  alert(`💾 [DEMO]\n\n保存先 (実運用予定):\nSharePoint LEENAI_CONTRACT_DRAFT/処理待ち/\n  ${filename}\n\n夜間CoworkがCOMPASSに自動登録します。\n\n現在はブラウザから JSONをダウンロードしました。`);
   resetWizard();
 }
 
 function doDownload() {
   const data = buildContractJson();
-  const filename = S.contractDate + '_' + S.type + '_' + S.contractNo + '_' + shortName(S.packer?.name||'') + '.json';
+  const filename = `${S.contractDate}_${S.type}_${S.contractNo}_${shortName(S.packer?.name||'')}.json`;
   downloadJson(data, filename);
 }
 
@@ -1109,17 +1376,18 @@ function downloadJson(data, filename) {
 }
 
 // ══════════════════════════════════════════════════════
-// Excel 契約書生成 (xlsx-js-style) — 업무 로직 불변
+// Excel 契約書生成 (xlsx-js-style)
 // ══════════════════════════════════════════════════════
 function doGenerateExcel() {
   const XLS = window.XLSXStyle;
   if (!XLS) { alert('Excel生成ライブラリが読み込まれていません。\nページを再読み込みしてください。'); return; }
   if (!S.packer) { alert('購買元が選択されていません。'); return; }
+
   showLoading('Excel 契約書を生成中...');
   setTimeout(() => {
     try {
       const wb = buildContractExcel(XLS);
-      const filename = S.contractNo + '_' + shortName(S.packer?.name||'') + '_購買契約書.xlsx';
+      const filename = `${S.contractNo}_${shortName(S.packer?.name||'')}_購買契約書.xlsx`;
       XLS.writeFile(wb, filename);
       hideLoading();
     } catch(e) {
@@ -1136,12 +1404,14 @@ function buildContractExcel(XLS) {
   const tax      = Math.floor(subtotal * 0.10);
   const total    = subtotal + tax;
 
+  // 日付フォーマット YYYY/M/D
   const fmtDate = str => {
     if (!str) return '';
     const m = str.match(/^(\d{4})-0?(\d+)-0?(\d+)/);
     return m ? `${m[1]}/${m[2]}/${m[3]}` : str;
   };
 
+  // ── スタイル定義 ──────────────────────────────
   const bd = (style='thin', rgb='AAAAAA') => ({style, color:{rgb}});
   const allBorder = (style='thin', rgb='999999') => ({
     top:bd(style,rgb), bottom:bd(style,rgb),
@@ -1149,65 +1419,208 @@ function buildContractExcel(XLS) {
   });
 
   const ST = {
-    titleBar: { font:{bold:true, sz:16, color:{rgb:'FFFFFF'}}, fill:{patternType:'solid', fgColor:{rgb:'111111'}}, alignment:{horizontal:'center', vertical:'center'} },
-    companyHeader: { font:{bold:true, sz:10}, alignment:{horizontal:'right', vertical:'center'} },
-    dateLabel: { font:{sz:9}, alignment:{horizontal:'right', vertical:'center'} },
-    dateValue: { font:{bold:true, sz:9}, alignment:{horizontal:'left', vertical:'center'} },
-    partyLabel: { font:{bold:true, sz:10}, alignment:{horizontal:'left', vertical:'center'} },
-    partyBody: { font:{sz:9}, alignment:{horizontal:'left', vertical:'center'} },
-    clauseText: { font:{sz:9}, alignment:{horizontal:'left', vertical:'center'} },
-    tblHdr: { font:{bold:true, sz:9}, fill:{patternType:'solid', fgColor:{rgb:'DDDDDD'}}, border: allBorder('medium','666666'), alignment:{horizontal:'center', vertical:'center', wrapText:true} },
-    tblCell: { font:{sz:9}, border: allBorder(), alignment:{horizontal:'left', vertical:'center'} },
-    tblCellC: { font:{sz:9}, border: allBorder(), alignment:{horizontal:'center', vertical:'center'} },
-    tblCellR: { font:{sz:9}, border: allBorder(), alignment:{horizontal:'right', vertical:'center'} },
-    tblCellNum: { font:{sz:9}, border: allBorder(), alignment:{horizontal:'right', vertical:'center'}, numFmt:'#,##0' },
-    sumLabel: { font:{bold:true, sz:9}, fill:{patternType:'solid', fgColor:{rgb:'F0F0F0'}}, border: allBorder('medium','666666'), alignment:{horizontal:'right', vertical:'center'} },
-    sumNum: { font:{bold:true, sz:9}, fill:{patternType:'solid', fgColor:{rgb:'F0F0F0'}}, border: allBorder('medium','666666'), alignment:{horizontal:'right', vertical:'center'}, numFmt:'#,##0' },
-    condLabel: { font:{bold:true, sz:9}, alignment:{horizontal:'left', vertical:'top'} },
-    condVal: { font:{sz:9}, alignment:{horizontal:'left', vertical:'top', wrapText:true} },
-    noteText: { font:{sz:8}, alignment:{horizontal:'left', vertical:'top', wrapText:true} },
-    signName: { font:{bold:true, sz:10}, alignment:{horizontal:'left', vertical:'center'} },
-    signSub: { font:{sz:9}, alignment:{horizontal:'left', vertical:'center'} },
-    stampPlaceholder: { font:{sz:8, color:{rgb:'AAAAAA'}}, border: allBorder('thin','CCCCCC'), alignment:{horizontal:'center', vertical:'center'} },
-    footer: { font:{italic:true, sz:8, color:{rgb:'AAAAAA'}}, alignment:{horizontal:'left', vertical:'center'} },
+    titleBar: {
+      font:{bold:true, sz:16, color:{rgb:'FFFFFF'}},
+      fill:{patternType:'solid', fgColor:{rgb:'111111'}},
+      alignment:{horizontal:'center', vertical:'center'}
+    },
+    companyHeader: {
+      font:{bold:true, sz:10},
+      alignment:{horizontal:'right', vertical:'center'}
+    },
+    dateLabel: {
+      font:{sz:9},
+      alignment:{horizontal:'right', vertical:'center'}
+    },
+    dateValue: {
+      font:{bold:true, sz:9},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    partyLabel: {
+      font:{bold:true, sz:10},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    partyBody: {
+      font:{sz:9},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    clauseText: {
+      font:{sz:9},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    tblHdr: {
+      font:{bold:true, sz:9},
+      fill:{patternType:'solid', fgColor:{rgb:'DDDDDD'}},
+      border: allBorder('medium','666666'),
+      alignment:{horizontal:'center', vertical:'center', wrapText:true}
+    },
+    tblCell: {
+      font:{sz:9},
+      border: allBorder(),
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    tblCellC: {
+      font:{sz:9},
+      border: allBorder(),
+      alignment:{horizontal:'center', vertical:'center'}
+    },
+    tblCellR: {
+      font:{sz:9},
+      border: allBorder(),
+      alignment:{horizontal:'right', vertical:'center'}
+    },
+    tblCellNum: {
+      font:{sz:9},
+      border: allBorder(),
+      alignment:{horizontal:'right', vertical:'center'},
+      numFmt:'#,##0'
+    },
+    sumLabel: {
+      font:{bold:true, sz:9},
+      fill:{patternType:'solid', fgColor:{rgb:'F0F0F0'}},
+      border: allBorder('medium','666666'),
+      alignment:{horizontal:'right', vertical:'center'}
+    },
+    sumNum: {
+      font:{bold:true, sz:9},
+      fill:{patternType:'solid', fgColor:{rgb:'F0F0F0'}},
+      border: allBorder('medium','666666'),
+      alignment:{horizontal:'right', vertical:'center'},
+      numFmt:'#,##0'
+    },
+    condLabel: {
+      font:{bold:true, sz:9},
+      alignment:{horizontal:'left', vertical:'top'}
+    },
+    condVal: {
+      font:{sz:9},
+      alignment:{horizontal:'left', vertical:'top', wrapText:true}
+    },
+    noteText: {
+      font:{sz:8},
+      alignment:{horizontal:'left', vertical:'top', wrapText:true}
+    },
+    signName: {
+      font:{bold:true, sz:10},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    signSub: {
+      font:{sz:9},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
+    stampPlaceholder: {
+      font:{sz:8, color:{rgb:'AAAAAA'}},
+      border: allBorder('thin','CCCCCC'),
+      alignment:{horizontal:'center', vertical:'center'}
+    },
+    footer: {
+      font:{italic:true, sz:8, color:{rgb:'AAAAAA'}},
+      alignment:{horizontal:'left', vertical:'center'}
+    },
     empty: { font:{sz:9} }
   };
 
-  const ws = {};
+  // ── ワークシート構築 ──────────────────────────
+  const ws  = {};
   const merges = [];
-  const rows = [];
+  const rows  = []; // row heights [{hpt}]
   let R = 0;
 
+  // セルセット
   function C(col, row, val, style) {
     const addr = XLS.utils.encode_cell({c:col, r:row});
     const t = (typeof val === 'number') ? 'n' : 's';
     ws[addr] = { v: val === null || val === undefined ? '' : val, t, s: style || ST.empty };
   }
+  // マージ登録
   function M(cs, rs, ce, re) { merges.push({s:{c:cs,r:rs}, e:{c:ce,r:re}}); }
+  // 行高さ設定
   function H(r, hpt) { rows[r] = {hpt}; }
 
-  H(R, 20); C(4, R, '株式会社リニア', ST.companyHeader); M(4,R,6,R); R++;
-  H(R, 6); R++;
-  H(R, 30); C(0, R, '売 買 契 約 書', ST.titleBar); M(0,R,6,R); R++;
-  H(R, 8); R++;
-  H(R, 16); C(4, R, '日　付：', ST.dateLabel); C(5, R, fmtDate(S.contractDate), ST.dateValue); M(5,R,6,R); R++;
-  H(R, 16); C(4, R, '契約番号：', ST.dateLabel); C(5, R, S.contractNo, ST.dateValue); M(5,R,6,R); R++;
-  H(R, 16); C(4, R, 'Revise 日付：', ST.dateLabel); C(5, R, S.mode === 'revise' ? fmtDate(S.reviseDate) : '', ST.dateValue); M(5,R,6,R); R++;
-  H(R, 10); R++;
-  H(R, 18); C(0, R, '甲　(売主)　' + (p.name||''), ST.partyLabel); M(0,R,6,R); R++;
-  H(R, 15); C(1, R, p.address||'', ST.partyBody); M(1,R,6,R); R++;
-  H(R, 15); C(1, R, `TEL :${p.tel||'　'}　FAX :${p.fax||'　'}`, ST.partyBody); M(1,R,6,R); R++;
-  H(R, 8); R++;
-  H(R, 18); C(0, R, '乙　(買主)　株式会社リニア', ST.partyLabel); M(0,R,6,R); R++;
-  H(R, 15); C(1, R, '〒101-0064　東京都千代田区神田猿楽町2-8-11, VORT水道橋Ⅲ 5階', ST.partyBody); M(1,R,6,R); R++;
-  H(R, 15); C(1, R, 'TEL: 03-3528-9850　FAX: 03-3528-9851', ST.partyBody); M(1,R,6,R); R++;
-  H(R, 8); R++;
-  H(R, 15); C(0, R, '甲乙は次の通り売買契約を締結する。', ST.clauseText); M(0,R,6,R); R++;
-  H(R, 6); R++;
-  H(R, 22);
-  C(0, R, 'No.', ST.tblHdr); C(1, R, '品名', ST.tblHdr); M(1,R,2,R);
-  C(3, R, '数量(KG)', ST.tblHdr); C(4, R, '単価(税抜)', ST.tblHdr); C(5, R, '条件', ST.tblHdr); C(6, R, '金額(JPY)', ST.tblHdr); R++;
+  // 列構成: A=0 B=1 C=2 D=3 E=4 F=5 G=6
+  // A: No./ラベル(8), B: 品名コード(12), C: 品名日本語(12),
+  // D: 数量(14), E: 単価(10), F: 条件(14), G: 金額(13)
 
+  // ── ROW 0: 会社名(右側) ──
+  H(R, 20);
+  C(4, R, '株式会社リニア', ST.companyHeader); M(4,R,6,R);
+  R++;
+
+  // ── ROW 1: 空白 ──
+  H(R, 6); R++;
+
+  // ── ROW 2: タイトルバー ──
+  H(R, 30);
+  C(0, R, '売 買 契 約 書', ST.titleBar); M(0,R,6,R);
+  R++;
+
+  // ── ROW 3: 空白 ──
+  H(R, 8); R++;
+
+  // ── ROW 4-6: 日付・契約番号・Revise ──
+  H(R, 16);
+  C(4, R, '日　付：', ST.dateLabel);
+  C(5, R, fmtDate(S.contractDate), ST.dateValue); M(5,R,6,R);
+  R++;
+  H(R, 16);
+  C(4, R, '契約番号：', ST.dateLabel);
+  C(5, R, S.contractNo, ST.dateValue); M(5,R,6,R);
+  R++;
+  H(R, 16);
+  C(4, R, 'Revise 日付：', ST.dateLabel);
+  C(5, R, S.mode === 'revise' ? fmtDate(S.reviseDate) : '', ST.dateValue); M(5,R,6,R);
+  R++;
+
+  // ── ROW 7: 空白 ──
+  H(R, 10); R++;
+
+  // ── ROW 8-10: 甲(売主) ──
+  H(R, 18);
+  C(0, R, '甲　(売主)　' + (p.name||''), ST.partyLabel); M(0,R,6,R);
+  R++;
+  H(R, 15);
+  C(1, R, p.address||'', ST.partyBody); M(1,R,6,R);
+  R++;
+  H(R, 15);
+  C(1, R, `TEL :${p.tel||'　'}　FAX :${p.fax||'　'}`, ST.partyBody); M(1,R,6,R);
+  R++;
+
+  // ── ROW 11: 空白 ──
+  H(R, 8); R++;
+
+  // ── ROW 12-14: 乙(買主) ──
+  H(R, 18);
+  C(0, R, '乙　(買主)　株式会社リニア', ST.partyLabel); M(0,R,6,R);
+  R++;
+  H(R, 15);
+  C(1, R, '〒101-0064　東京都千代田区神田猿楽町2-8-11, VORT水道橋Ⅲ 5階', ST.partyBody); M(1,R,6,R);
+  R++;
+  H(R, 15);
+  C(1, R, 'TEL: 03-3528-9850　FAX: 03-3528-9851', ST.partyBody); M(1,R,6,R);
+  R++;
+
+  // ── ROW 15: 空白 ──
+  H(R, 8); R++;
+
+  // ── ROW 16: 文言 ──
+  H(R, 15);
+  C(0, R, '甲乙は次の通り売買契約を締結する。', ST.clauseText); M(0,R,6,R);
+  R++;
+
+  // ── ROW 17: 空白 ──
+  H(R, 6); R++;
+
+  // ── ROW 18: テーブルヘッダー ──
+  H(R, 22);
+  C(0, R, 'No.',    ST.tblHdr);
+  C(1, R, '品名',   ST.tblHdr); M(1,R,2,R);
+  C(3, R, '数量(KG)', ST.tblHdr);
+  C(4, R, '単価(税抜)', ST.tblHdr);
+  C(5, R, '条件',   ST.tblHdr);
+  C(6, R, '金額(JPY)', ST.tblHdr);
+  R++;
+
+  // ── ROW 19-24: 品目明細 (6行固定) ──
   let totalQty = 0;
   for (let i = 0; i < 6; i++) {
     H(R, 18);
@@ -1218,17 +1631,38 @@ function buildContractExcel(XLS) {
     C(3, R, d ? `${d.qty.toLocaleString()} (${d.count} 本)` : '', ST.tblCellR);
     C(4, R, d ? d.price : '', d ? ST.tblCellR : ST.tblCell);
     C(5, R, d ? `${d.pol} ${d.incoterms}渡し` : '', ST.tblCell);
-    if (d) { const a = XLS.utils.encode_cell({c:6, r:R}); ws[a] = {v: d.amount, t:'n', s: ST.tblCellNum}; totalQty += d.qty; }
-    else { C(6, R, '', ST.tblCell); }
+    if (d) {
+      const a = XLS.utils.encode_cell({c:6, r:R});
+      ws[a] = {v: d.amount, t:'n', s: ST.tblCellNum};
+      totalQty += d.qty;
+    } else {
+      C(6, R, '', ST.tblCell);
+    }
     R++;
   }
 
-  H(R, 18); C(0, R, '合計', ST.sumLabel); M(0,R,2,R); C(3, R, `${totalQty.toLocaleString()} KG`, ST.sumLabel); C(4, R, '', ST.tblCell); C(5, R, '税抜き', ST.sumLabel);
-  const stAddr = XLS.utils.encode_cell({c:6, r:R}); ws[stAddr] = {v: subtotal, t:'n', s: ST.sumNum}; R++;
-  H(R, 18); C(0, R, '', ST.tblCell); M(0,R,4,R); C(5, R, '税込み', ST.sumLabel);
-  const ttAddr = XLS.utils.encode_cell({c:6, r:R}); ws[ttAddr] = {v: total, t:'n', s: ST.sumNum}; R++;
+  // ── ROW 25: 合計 / 税抜き ──
+  H(R, 18);
+  C(0, R, '合計', ST.sumLabel); M(0,R,2,R);
+  C(3, R, `${totalQty.toLocaleString()} KG`, ST.sumLabel);
+  C(4, R, '', ST.tblCell);
+  C(5, R, '税抜き', ST.sumLabel);
+  const stAddr = XLS.utils.encode_cell({c:6, r:R});
+  ws[stAddr] = {v: subtotal, t:'n', s: ST.sumNum};
+  R++;
+
+  // ── ROW 26: 税込み ──
+  H(R, 18);
+  C(0, R, '', ST.tblCell); M(0,R,4,R);
+  C(5, R, '税込み', ST.sumLabel);
+  const ttAddr = XLS.utils.encode_cell({c:6, r:R});
+  ws[ttAddr] = {v: total, t:'n', s: ST.sumNum};
+  R++;
+
+  // ── ROW 27: 空白 ──
   H(R, 10); R++;
 
+  // ── ROW 28-32: 下段 2列 ──
   const leftRows = [
     ['納入条件：', '湿度12%以下、禁忌品の紙５%以下、禁忌品の紙以外のものは１%以下'],
     ['梱　　　包：', '輸出用ベール(BALES)'],
@@ -1243,12 +1677,23 @@ function buildContractExcel(XLS) {
     '＊ 写真お送り先（メールアドレス変更）',
     '　－ photo_rcp@leenearcorp.com',
   ];
+
   leftRows.forEach(([lbl, val], i) => {
-    H(R, 16); C(0, R, lbl, ST.condLabel); C(1, R, val, ST.condVal); M(1,R,3,R); C(4, R, rightRows[i]||'', ST.noteText); M(4,R,6,R); R++;
+    H(R, 16);
+    C(0, R, lbl, ST.condLabel);
+    C(1, R, val, ST.condVal); M(1,R,3,R);
+    C(4, R, rightRows[i]||'', ST.noteText); M(4,R,6,R);
+    R++;
   });
 
+  // ── ROW: 空白 ──
   H(R, 10); R++;
-  H(R, 15); C(0, R, '＜備考＞', ST.condLabel); M(0,R,6,R); R++;
+
+  // ── 備考 ──
+  H(R, 15);
+  C(0, R, '＜備考＞', ST.condLabel); M(0,R,6,R);
+  R++;
+
   const bikoLines = [
     '１．分納可能',
     '２．契約量の±10%は、変動可能',
@@ -1257,22 +1702,55 @@ function buildContractExcel(XLS) {
     '５．当社は反社会的勢力とは一切関わりがないことを保証します。',
     '６．各向け地別、必要書類は異なります。',
   ];
-  bikoLines.forEach(line => { H(R, 14); C(0, R, line, ST.noteText); M(0,R,6,R); R++; });
+  bikoLines.forEach(line => {
+    H(R, 14);
+    C(0, R, line, ST.noteText); M(0,R,6,R);
+    R++;
+  });
+
+  // ── 空白 ──
   H(R, 14); R++;
-  H(R, 16); C(0, R, '株式会社リニア', ST.signName); M(0,R,2,R); C(4, R, p.name||'', ST.signName); M(4,R,6,R); R++;
-  H(R, 15); C(0, R, '代表取締役　李明鎬', ST.signSub); M(0,R,2,R); R++;
+
+  // ── 署名欄 ──
+  H(R, 16);
+  C(0, R, '株式会社リニア', ST.signName); M(0,R,2,R);
+  C(4, R, p.name||'', ST.signName); M(4,R,6,R);
+  R++;
+  H(R, 15);
+  C(0, R, '代表取締役　李明鎬', ST.signSub); M(0,R,2,R);
+  R++;
+
+  // 署名スペース (3行)
   for (let i = 0; i < 3; i++) {
     H(R, 20);
-    if (i === 1) { C(0, R, '[ロゴ・印]', ST.stampPlaceholder); M(0,R,1,R); C(5, R, '[印]', ST.stampPlaceholder); M(5,R,6,R); }
-    else { C(0, R, '', ST.empty); M(0,R,1,R); C(5, R, '', ST.empty); M(5,R,6,R); }
+    if (i === 1) {
+      C(0, R, '[ロゴ・印]', ST.stampPlaceholder); M(0,R,1,R);
+      C(5, R, '[印]', ST.stampPlaceholder); M(5,R,6,R);
+    } else {
+      C(0, R, '', ST.empty); M(0,R,1,R);
+      C(5, R, '', ST.empty); M(5,R,6,R);
+    }
     R++;
   }
-  H(R, 14); R++;
-  H(R, 14); C(0, R, '✦ Powered by LEENAI Automation System', ST.footer); M(0,R,6,R); R++;
 
+  // ── フッター ──
+  H(R, 14); R++;
+  H(R, 14);
+  C(0, R, '✦ Powered by LEENAI Automation System', ST.footer); M(0,R,6,R);
+  R++;
+
+  // ── 範囲・マージ・列幅・行高さ ──
   ws['!ref']    = XLS.utils.encode_range({s:{c:0,r:0}, e:{c:6,r:R}});
   ws['!merges'] = merges;
-  ws['!cols']   = [{wch:8},{wch:12},{wch:12},{wch:15},{wch:10},{wch:14},{wch:13}];
+  ws['!cols']   = [
+    {wch: 8},   // A: No./ラベル
+    {wch:12},   // B: 品名コード
+    {wch:12},   // C: 品名日本語
+    {wch:15},   // D: 数量
+    {wch:10},   // E: 単価
+    {wch:14},   // F: 条件
+    {wch:13},   // G: 金額
+  ];
   ws['!rows'] = rows;
 
   const wb = XLS.utils.book_new();
@@ -1281,7 +1759,9 @@ function buildContractExcel(XLS) {
 }
 
 function resetWizard() {
+  const preserved = { accessToken: S.accessToken, tokenExpiry: S.tokenExpiry, userName: S.userName, userEmail: S.userEmail };
   S = initState();
+  Object.assign(S, preserved);
   renderStep();
   window.scrollTo(0,0);
 }
@@ -1302,6 +1782,7 @@ function showTab(name) {
   document.getElementById('tab-'+name).style.display = 'block';
 }
 
+// 履歴
 function renderHistory() {
   const el = document.getElementById('historyList');
   if (!el) return;
@@ -1327,8 +1808,9 @@ function renderHistory() {
   }).join('');
 }
 
+// マスター
 function renderMaster() {
-  document.getElementById('packerCount').textContent = '(' + PACKERS.length + '社)';
+  document.getElementById('packerCount').textContent = `(${PACKERS.length}社)`;
   filterMasterList();
 }
 
@@ -1367,6 +1849,20 @@ function filterMasterList() {
     </div>`;
   }).join('') || '<div style="color:var(--text3);text-align:center;padding:20px;">該当なし</div>';
 }
+
+// ══════════════════════════════════════════════════════
+// 초기화
+// ══════════════════════════════════════════════════════
+(async function init() {
+  // OAuth 콜백이면 토큰 교환
+  if (location.search.includes('code=')) {
+    await handleCallback();
+    return;
+  }
+  // 첫 로드: 로그인 카드 표시
+})();
+
+
 </script>
 </body>
 </html>
